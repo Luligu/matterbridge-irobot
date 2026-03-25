@@ -1,10 +1,19 @@
+const MATTER_PORT = 0;
+const NAME = 'IRobotDiscovery';
+const HOMEDIR = path.join('jest', NAME);
+const CREATE_ONLY = true;
+
 import type { RemoteInfo } from 'node:dgram';
 import dgram from 'node:dgram';
 import { EventEmitter } from 'node:events';
+import path from 'node:path';
 
 import { afterEach, describe, expect, it, jest } from '@jest/globals';
+import { setupTest } from 'matterbridge/jestutils';
 
 import { Discovery } from './discovery.js';
+
+await setupTest(NAME, false);
 
 class FakeSocket extends EventEmitter {
   public broadcast = false;
@@ -46,7 +55,6 @@ afterEach(() => {
     // ignore (e.g. if fake timers were not enabled)
   }
   jest.useRealTimers();
-  jest.restoreAllMocks();
 });
 
 describe('Discovery', () => {
@@ -71,10 +79,6 @@ describe('Discovery', () => {
 
   it('discover collects iRobot/Roomba responses and ignores invalid ones', async () => {
     jest.useFakeTimers();
-
-    const consoleSpy = jest.spyOn(console, 'log').mockImplementation(() => {
-      // Silence node-ansi-logger output during this unit test.
-    });
 
     let socket: FakeSocket | undefined;
     jest.spyOn(dgram, 'createSocket').mockImplementation(() => {
@@ -112,8 +116,6 @@ describe('Discovery', () => {
     expect(result[0].hostname).toBe('Roomba-ABC');
     expect(result[0].rinfo.address).toBe('10.0.0.2');
     expect(socket?.closed).toBe(true);
-
-    consoleSpy.mockRestore();
   });
 
   it('discover rejects on socket error', async () => {

@@ -193,7 +193,7 @@ export class Discovery {
             this.devices.set(parsed.ip, parsed);
           }
         } catch {
-          this.log.error('Error parsing discovery response from', rinfo.address, 'message:', msg.toString());
+          this.log.error(`Error parsing discovery response from ${rinfo.address} message ${msg.toString()}`);
         }
       });
 
@@ -213,7 +213,7 @@ export class Discovery {
   }
 
   /**
-   * Get robot public information using UDP discovery protocol.
+   * Get iRobot public information using UDP protocol.
    * This extracts the BLID from the hostname and other robot details.
    *
    * @param {string} robotIP - IP address of the robot
@@ -237,10 +237,10 @@ export class Discovery {
         reject(err);
       });
 
-      socket.on('message', (msg) => {
+      socket.on('message', (msg, rinfo) => {
         try {
           const parsedMsg = JSON.parse(msg.toString()) as DiscoveryInfo;
-          // console.log(`Received discovery response from ${robotIP}:`, parsedMsg);
+          this.log.debug(`Received discovery response from ${robotIP}:`, parsedMsg);
           if (parsedMsg.hostname && parsedMsg.ip && (parsedMsg.hostname.split('-')[0] === 'Roomba' || parsedMsg.hostname.split('-')[0] === 'iRobot')) {
             clearTimeout(timeoutId);
             socket.close();
@@ -249,11 +249,11 @@ export class Discovery {
             resolve({ ...parsedMsg, robotid: blid });
           }
         } catch {
-          // Ignore invalid JSON
+          this.log.error(`Error parsing public info response from ${rinfo?.address ?? robotIP} message ${msg.toString()}`);
         }
       });
 
-      socket.bind(5678, () => {
+      socket.bind(this.port, () => {
         for (let i = 0; i < 10; i++) {
           // Send multiple times to increase discovery reliability
           socket.send(this.message, 0, this.message.length, this.port, '255.255.255.255'); // Broadcast to all udp4 devices

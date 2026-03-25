@@ -2,12 +2,11 @@
   "name": "matterbridge-irobot",
   "type": "DynamicPlatform",
   "version": "1.0.0",
-  "username": "",
-  "password": "",
   "discovery": true,
   "devices": [],
   "whiteList": [],
   "blackList": [],
+  "enableServerRvc": true,
   "debug": false,
   "unregisterOnShutdown": false
 }

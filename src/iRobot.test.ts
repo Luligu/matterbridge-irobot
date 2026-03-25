@@ -1,9 +1,51 @@
+const MATTER_PORT = 0;
+const NAME = 'IRobotMqtt';
+const HOMEDIR = path.join('jest', NAME);
+const CREATE_ONLY = true;
+
 import { EventEmitter } from 'node:events';
+import path from 'node:path';
+import { inspect } from 'node:util';
 
 import { afterEach, describe, expect, it, jest } from '@jest/globals';
+import { setupTest } from 'matterbridge/jestutils';
 import type { IClientOptions } from 'mqtt';
 
-import { __testUtils, IRobotMqtt } from './irobot-mqtt.js';
+import { IRobotMqtt } from './iRobot.js';
+
+await setupTest(NAME, false);
+
+function formatLogValue(value: unknown): string {
+  return inspect(value, {
+    depth: null,
+    colors: false,
+    compact: false,
+    breakLength: 160,
+    maxArrayLength: null,
+    maxStringLength: null,
+  });
+}
+
+function parseOptionalRegex(value: string | undefined): RegExp | undefined {
+  if (!value) return undefined;
+
+  const trimmed = value.trim();
+  if (!trimmed) return undefined;
+
+  if (trimmed.startsWith('/') && trimmed.lastIndexOf('/') > 0) {
+    const lastSlash = trimmed.lastIndexOf('/');
+    const pattern = trimmed.slice(1, lastSlash);
+    const flags = trimmed.slice(lastSlash + 1);
+    return new RegExp(pattern, flags);
+  }
+
+  return new RegExp(trimmed);
+}
+
+const __testUtils = {
+  formatLogValue,
+  parseOptionalRegex,
+};
 
 class FakeMqttClient extends EventEmitter {
   connected = false;
@@ -43,16 +85,31 @@ afterEach(() => {
 describe('IRobotMqtt', () => {
   it('constructor uses default connect() function when connectFn is omitted', () => {
     // We don't call connect() here, so no real network is used.
-    const client = new IRobotMqtt({ ip: '192.168.1.2', blid: 'BLID', password: 'PASSWORD' });
+    const client = new IRobotMqtt({ ip: '192.168.1.2', blid: 'BLID', password: 'PASSWORD', logger: logger as any });
     expect(client.isConnected()).toBe(false);
+    expect(client.isConfigured()).toBe(true);
   });
 
-  it('constructor validates required fields', () => {
+  it('constructor treats missing fields as unconfigured', () => {
     const connectFn = jest.fn();
 
-    expect(() => new IRobotMqtt({ ip: '', blid: 'B', password: 'P' }, connectFn as any)).toThrow('IRobotMqtt: ip is required');
-    expect(() => new IRobotMqtt({ ip: '1.2.3.4', blid: '', password: 'P' }, connectFn as any)).toThrow('IRobotMqtt: blid is required');
-    expect(() => new IRobotMqtt({ ip: '1.2.3.4', blid: 'B', password: '' }, connectFn as any)).toThrow('IRobotMqtt: password is required');
+    const missingIp = new IRobotMqtt({ ip: '', blid: 'B', password: 'P', logger: logger as any }, connectFn as any);
+    const missingBlid = new IRobotMqtt({ ip: '1.2.3.4', blid: '', password: 'P', logger: logger as any }, connectFn as any);
+    const missingPassword = new IRobotMqtt({ ip: '1.2.3.4', blid: 'B', password: '', logger: logger as any }, connectFn as any);
+
+    expect(missingIp.isConfigured()).toBe(false);
+    expect(missingBlid.isConfigured()).toBe(false);
+    expect(missingPassword.isConfigured()).toBe(false);
+  });
+
+  it('connect() returns early when credentials are missing', async () => {
+    const connectFn = jest.fn();
+    const client = new IRobotMqtt({ ip: '192.168.1.2', blid: '', password: '', logger: logger as any }, connectFn as any);
+
+    await expect(client.connect()).resolves.toBeUndefined();
+
+    expect(connectFn).not.toHaveBeenCalled();
+    expect(client.isConnected()).toBe(false);
   });
 
   it('connect() subscribes and resolves on connect event', async () => {
@@ -89,7 +146,7 @@ describe('IRobotMqtt', () => {
     fake.connected = true;
 
     const connectFn = jest.fn((_url: string, _options: IClientOptions) => fake as any);
-    const client = new IRobotMqtt({ ip: '192.168.1.2', blid: 'BLID', password: 'PASSWORD' }, connectFn as any);
+    const client = new IRobotMqtt({ ip: '192.168.1.2', blid: 'BLID', password: 'PASSWORD', logger: logger as any }, connectFn as any);
 
     // @ts-expect-error - internal test setup
     client.client = fake;
@@ -227,7 +284,7 @@ describe('IRobotMqtt', () => {
 
   it('subscribe() throws when not connected, and propagates subscribe errors', async () => {
     const fake = new FakeMqttClient();
-    const client = new IRobotMqtt({ ip: '192.168.1.2', blid: 'BLID', password: 'PASSWORD' }, (() => fake) as any);
+    const client = new IRobotMqtt({ ip: '192.168.1.2', blid: 'BLID', password: 'PASSWORD', logger: logger as any }, (() => fake) as any);
 
     await expect(client.subscribe('#')).rejects.toThrow('IRobotMqtt: not connected');
 
@@ -264,7 +321,7 @@ describe('IRobotMqtt', () => {
     const fake = new FakeMqttClient();
     fake.connected = true;
     const connectFn = jest.fn((_url: string, _options: IClientOptions) => fake as unknown as any);
-    const client = new IRobotMqtt({ ip: '192.168.1.2', blid: 'BLID', password: 'PASSWORD' }, connectFn as any);
+    const client = new IRobotMqtt({ ip: '192.168.1.2', blid: 'BLID', password: 'PASSWORD', logger: logger as any }, connectFn as any);
 
     // @ts-expect-error - set internal client for testing disconnect without needing to run connect()
     client.client = fake;
@@ -332,9 +389,17 @@ describe('IRobotMqtt', () => {
     await Promise.all([expect(timeoutPromise).rejects.toThrow('IRobotMqtt publish timeout after 20ms (dock)'), jest.advanceTimersByTimeAsync(20)]);
   });
 
+  it('publishCommand() returns early when credentials are missing', async () => {
+    const fake = new FakeMqttClient();
+    const client = new IRobotMqtt({ ip: '192.168.1.2', blid: '', password: '', logger: logger as any }, (() => fake) as any);
+
+    await expect(client.publishCommand('start')).resolves.toBeUndefined();
+    expect(fake.publish).not.toHaveBeenCalled();
+  });
+
   it('command helpers call publishCommand', async () => {
     const fake = new FakeMqttClient();
-    const client = new IRobotMqtt({ ip: '192.168.1.2', blid: 'BLID', password: 'PASSWORD' }, (() => fake) as any);
+    const client = new IRobotMqtt({ ip: '192.168.1.2', blid: 'BLID', password: 'PASSWORD', logger: logger as any }, (() => fake) as any);
     const spy = jest.spyOn(client, 'publishCommand').mockResolvedValue();
 
     await client.start();
