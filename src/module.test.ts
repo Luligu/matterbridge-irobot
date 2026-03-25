@@ -12,6 +12,7 @@ import {
   addMatterbridgePlatform,
   createMatterbridgeEnvironment,
   destroyMatterbridgeEnvironment,
+  flushAsync,
   log,
   loggerDebugSpy,
   loggerErrorSpy,
@@ -110,6 +111,7 @@ describe('TestPlatform', () => {
 
     config.devices = [{ name: 'Test Device' }];
     await platform.onStart('Test reason');
+    await flushAsync();
     expect(loggerInfoSpy).toHaveBeenCalledWith('onStart called with reason:', 'Test reason');
     expect(loggerInfoSpy).toHaveBeenCalledWith(`Registering device "${config.devices[0].name}" with IP ${config.devices[0].ip}...`);
     const device = platform.getDeviceByName(config.devices[0].name);
