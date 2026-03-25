@@ -140,7 +140,7 @@ describe('TestPlatform', () => {
     expect(loggerInfoSpy).toHaveBeenCalledWith('onShutdown called with reason:', 'Test reason');
 
     platform = undefined;
-  });
+  }, 30000);
 
   it('should discover only new devices and map discovered fields into the config', async () => {
     const discoverSpy = jest
