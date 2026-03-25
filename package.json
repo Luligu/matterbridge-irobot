@@ -53,7 +53,7 @@
     "ewelink"
   ],
   "engines": {
-    "node": ">=20.0.0 <21.0.0 || >=22.0.0 <23.0.0 || >=24.0.0 <25.0.0"
+    "node": ">=20.19.0 <21.0.0 || >=22.13.0 <23.0.0 || >=24.0.0 <25.0.0"
   },
   "files": [
     "bin",
@@ -82,6 +82,7 @@
     "test:vitest:watch": "vitest --reporter verbose",
     "test:vitest:verbose": "vitest run --reporter verbose",
     "test:vitest:coverage": "vitest run --reporter verbose --coverage",
+    "test:vitest:typecheck": "tsc --project tsconfig.vitest.json --isolatedModules false --noEmit",
     "lint": "cross-env TSESTREE_SUPPRESS_WARNINGS=true TYPESCRIPT_ESLINT_DISABLE_WARNINGS=true eslint --cache --cache-location .cache/.eslintcache --max-warnings=0 .",
     "lint:fix": "cross-env TSESTREE_SUPPRESS_WARNINGS=true TYPESCRIPT_ESLINT_DISABLE_WARNINGS=true eslint --cache --cache-location .cache/.eslintcache --fix --max-warnings=0 .",
     "lint:debug": "cross-env TSESTREE_SUPPRESS_WARNINGS=true TYPESCRIPT_ESLINT_DISABLE_WARNINGS=true eslint --cache --cache-location .cache/.eslintcache --max-warnings=0 --debug",
