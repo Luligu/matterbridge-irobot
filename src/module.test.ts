@@ -609,6 +609,7 @@ describe('TestPlatform', () => {
     credentialsSpy.mockRestore();
     saveConfigSpy.mockRestore();
     snackbarSpy.mockRestore();
+    await platform.onShutdown();
     platform = undefined;
   });
 
@@ -661,6 +662,7 @@ describe('TestPlatform', () => {
     credentialsSpy.mockRestore();
     saveConfigSpy.mockRestore();
     snackbarSpy.mockRestore();
+    await platform.onShutdown();
     platform = undefined;
   });
 });
