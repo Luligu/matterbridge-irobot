@@ -11,7 +11,7 @@ import path from 'node:path';
 import { afterEach, describe, expect, it, jest } from '@jest/globals';
 import { setupTest } from 'matterbridge/jestutils';
 
-import { Discovery } from './discovery.js';
+import { IRobotDiscovery } from './iRobotDiscovery.js';
 
 await setupTest(NAME, false);
 
@@ -57,7 +57,7 @@ afterEach(() => {
   jest.useRealTimers();
 });
 
-describe('Discovery', () => {
+describe('IRobotDiscovery', () => {
   it('discover uses the default timeout when omitted', async () => {
     jest.useFakeTimers();
 
@@ -67,7 +67,7 @@ describe('Discovery', () => {
       return socket as unknown as dgram.Socket;
     });
 
-    const discovery = new Discovery();
+    const discovery = new IRobotDiscovery();
     const promise = discovery.discover();
 
     await jest.advanceTimersByTimeAsync(5000);
@@ -86,7 +86,7 @@ describe('Discovery', () => {
       return socket as unknown as dgram.Socket;
     });
 
-    const discovery = new Discovery();
+    const discovery = new IRobotDiscovery();
     const promise = discovery.discover(100);
 
     expect(socket?.boundPort).toBe(5678);
@@ -127,7 +127,7 @@ describe('Discovery', () => {
       return socket as unknown as dgram.Socket;
     });
 
-    const discovery = new Discovery();
+    const discovery = new IRobotDiscovery();
     const promise = discovery.discover(1000);
 
     socket?.emit('error', new Error('boom'));
@@ -148,7 +148,7 @@ describe('Discovery', () => {
       return socket as unknown as dgram.Socket;
     });
 
-    const discovery = new Discovery();
+    const discovery = new IRobotDiscovery();
     const promise = discovery.getRobotPublicInfo('10.0.0.2', 5000);
 
     expect(socket?.boundPort).toBe(5678);
@@ -179,7 +179,7 @@ describe('Discovery', () => {
       return socket as unknown as dgram.Socket;
     });
 
-    const discovery = new Discovery();
+    const discovery = new IRobotDiscovery();
     const promise = discovery.getRobotPublicInfo('10.0.0.9', 50);
 
     // Invalid JSON should be ignored.
@@ -201,7 +201,7 @@ describe('Discovery', () => {
       return socket as unknown as dgram.Socket;
     });
 
-    const discovery = new Discovery();
+    const discovery = new IRobotDiscovery();
     const promise = discovery.getRobotPublicInfo('10.0.0.9', 1000);
 
     socket?.emit('error', new Error('fail'));
@@ -221,7 +221,7 @@ describe('Discovery', () => {
       return socket as unknown as dgram.Socket;
     });
 
-    const discovery = new Discovery();
+    const discovery = new IRobotDiscovery();
     const promise = discovery.getRobotPublicInfo('10.0.0.9');
 
     await Promise.all([expect(promise).rejects.toThrow('Timeout getting robot info from 10.0.0.9'), jest.advanceTimersByTimeAsync(5000)]);

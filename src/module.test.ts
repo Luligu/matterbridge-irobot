@@ -14,6 +14,7 @@ import {
   destroyMatterbridgeEnvironment,
   log,
   loggerDebugSpy,
+  loggerErrorSpy,
   loggerInfoSpy,
   loggerNoticeSpy,
   loggerWarnSpy,
@@ -22,11 +23,11 @@ import {
   startMatterbridgeEnvironment,
   stopMatterbridgeEnvironment,
 } from 'matterbridge/jestutils';
-import { AnsiLogger } from 'matterbridge/logger';
 import { RvcCleanMode, RvcOperationalState, RvcRunMode, ServiceArea } from 'matterbridge/matter/clusters';
 
-import { Discovery, type DiscoveryInfo } from './discovery.js';
-import { IRobotMqtt } from './iRobot.js';
+import { IRobotDiscovery, type IRobotDiscoveryInfo } from './iRobotDiscovery.js';
+import { IRobotCredentials } from './iRobotGetCredentials.js';
+import { IRobotMqtt } from './iRobotMqtt.js';
 import initializePlugin, { iRobotPlatformConfig, Platform } from './module.js';
 
 await setupTest(NAME, false);
@@ -141,7 +142,7 @@ describe('TestPlatform', () => {
 
   it('should discover only new devices and map discovered fields into the config', async () => {
     const discoverSpy = jest
-      .spyOn(Discovery.prototype, 'discover')
+      .spyOn(IRobotDiscovery.prototype, 'discover')
       .mockResolvedValue([
         { ip: '192.168.1.10', hostname: 'Roomba-existing', robotname: 'Existing duplicate', robotid: 'existing-blid' } as never,
         { ip: '192.168.1.20', hostname: 'Roomba-new', robotname: 'Kitchen', robotid: 'new-blid' } as never,
@@ -176,7 +177,7 @@ describe('TestPlatform', () => {
 
   it('should still run discovery when called directly even if the config flag is disabled', async () => {
     const discoverSpy = jest
-      .spyOn(Discovery.prototype, 'discover')
+      .spyOn(IRobotDiscovery.prototype, 'discover')
       .mockResolvedValue([{ ip: '192.168.1.41', hostname: 'Roomba-config-disabled', robotname: 'Configured Later', robotid: 'later-blid' } as never]);
 
     const testConfig: iRobotPlatformConfig = {
@@ -202,8 +203,7 @@ describe('TestPlatform', () => {
   });
 
   it('should log a discovery error and keep the config unchanged when discovery fails', async () => {
-    const discoverSpy = jest.spyOn(Discovery.prototype, 'discover').mockRejectedValue(new Error('discover failed'));
-    const loggerErrorSpy = jest.spyOn(AnsiLogger.prototype, 'error');
+    const discoverSpy = jest.spyOn(IRobotDiscovery.prototype, 'discover').mockRejectedValue(new Error('discover failed'));
 
     const testConfig: iRobotPlatformConfig = {
       ...config,
@@ -221,14 +221,13 @@ describe('TestPlatform', () => {
     expect(testConfig.devices).toEqual([{ name: 'Existing', ip: '192.168.1.10', blid: 'existing-blid', password: 'secret' }]);
 
     discoverSpy.mockRestore();
-    loggerErrorSpy.mockRestore();
     await platform.onShutdown();
     platform = undefined;
   });
 
   it('should register devices, connect configured MQTT, and wire handlers', async () => {
-    const getRobotPublicInfoSpy = jest.spyOn(Discovery.prototype, 'getRobotPublicInfo').mockImplementation(
-      async (ip, timeout): Promise<DiscoveryInfo> => ({
+    const getRobotPublicInfoSpy = jest.spyOn(IRobotDiscovery.prototype, 'getRobotPublicInfo').mockImplementation(
+      async (ip, timeout): Promise<IRobotDiscoveryInfo> => ({
         ip,
         hostname: `Roomba-${ip}`,
         rinfo: { address: ip, family: 'IPv4', port: timeout ?? 5678, size: 0 },
@@ -354,8 +353,8 @@ describe('TestPlatform', () => {
   });
 
   it('should wire subscriptions and command handlers without connecting when credentials are missing', async () => {
-    const getRobotPublicInfoSpy = jest.spyOn(Discovery.prototype, 'getRobotPublicInfo').mockImplementation(
-      async (ip, timeout): Promise<DiscoveryInfo> => ({
+    const getRobotPublicInfoSpy = jest.spyOn(IRobotDiscovery.prototype, 'getRobotPublicInfo').mockImplementation(
+      async (ip, timeout): Promise<IRobotDiscoveryInfo> => ({
         ip,
         hostname: `Roomba-${ip}`,
         rinfo: { address: ip, family: 'IPv4', port: timeout ?? 5678, size: 0 },
@@ -461,7 +460,7 @@ describe('TestPlatform', () => {
   });
 
   it('should log public info and MQTT connection failures while continuing registration', async () => {
-    const getRobotPublicInfoSpy = jest.spyOn(Discovery.prototype, 'getRobotPublicInfo').mockImplementation(async (ip): Promise<DiscoveryInfo> => {
+    const getRobotPublicInfoSpy = jest.spyOn(IRobotDiscovery.prototype, 'getRobotPublicInfo').mockImplementation(async (ip): Promise<IRobotDiscoveryInfo> => {
       if (ip === '192.168.1.60') throw new Error('public info failed');
       return {
         ip,
@@ -471,8 +470,6 @@ describe('TestPlatform', () => {
     });
     const connectSpy = jest.spyOn(IRobotMqtt.prototype, 'connect').mockRejectedValue(new Error('mqtt connect failed'));
     const disconnectSpy = jest.spyOn(IRobotMqtt.prototype, 'disconnect').mockResolvedValue();
-    const loggerErrorSpy = jest.spyOn(AnsiLogger.prototype, 'error');
-    const loggerWarnSpy = jest.spyOn(AnsiLogger.prototype, 'warn');
 
     const testConfig: iRobotPlatformConfig = {
       ...config,
@@ -501,14 +498,12 @@ describe('TestPlatform', () => {
     getRobotPublicInfoSpy.mockRestore();
     connectSpy.mockRestore();
     disconnectSpy.mockRestore();
-    loggerErrorSpy.mockRestore();
-    loggerWarnSpy.mockRestore();
     platform = undefined;
   });
 
   it('should log a debug message when MQTT disconnect fails during shutdown', async () => {
-    const getRobotPublicInfoSpy = jest.spyOn(Discovery.prototype, 'getRobotPublicInfo').mockImplementation(
-      async (ip): Promise<DiscoveryInfo> => ({
+    const getRobotPublicInfoSpy = jest.spyOn(IRobotDiscovery.prototype, 'getRobotPublicInfo').mockImplementation(
+      async (ip): Promise<IRobotDiscoveryInfo> => ({
         ip,
         hostname: `Roomba-${ip}`,
         rinfo: { address: ip, family: 'IPv4', port: 5678, size: 0 },
@@ -516,7 +511,6 @@ describe('TestPlatform', () => {
     );
     const connectSpy = jest.spyOn(IRobotMqtt.prototype, 'connect').mockResolvedValue();
     const disconnectSpy = jest.spyOn(IRobotMqtt.prototype, 'disconnect').mockRejectedValue(new Error('disconnect failed'));
-    const loggerDebugSpy = jest.spyOn(AnsiLogger.prototype, 'debug');
 
     const testConfig: iRobotPlatformConfig = {
       ...config,
@@ -536,7 +530,135 @@ describe('TestPlatform', () => {
     getRobotPublicInfoSpy.mockRestore();
     connectSpy.mockRestore();
     disconnectSpy.mockRestore();
-    loggerDebugSpy.mockRestore();
+    platform = undefined;
+  });
+
+  it('should retrieve credentials, update existing devices, add new devices, and save the config on onAction', async () => {
+    const credentialsSpy = jest.spyOn(IRobotCredentials.prototype, 'getCredentials').mockResolvedValue([
+      {
+        blid: 'existing-blid-updated',
+        password: 'existing-password-updated',
+        name: 'Existing Robot',
+        sku: 'R98----',
+        softwareVer: 'v1.0.0',
+      },
+      {
+        blid: 'new-blid',
+        password: 'new-password',
+        name: 'New Robot',
+        sku: 'J7-----',
+        softwareVer: 'v2.0.0',
+      },
+    ]);
+
+    const testConfig: iRobotPlatformConfig = {
+      ...config,
+      username: 'config-user@example.com',
+      password: 'config-password',
+      devices: [
+        {
+          name: 'Existing Robot',
+          ip: '192.168.1.80',
+          blid: 'old-blid',
+          password: 'old-password',
+        },
+      ],
+    };
+
+    platform = new Platform(matterbridge, log, testConfig);
+    addMatterbridgePlatform(platform);
+
+    const saveConfigSpy = jest.spyOn(platform, 'saveConfig').mockImplementation(() => undefined as never);
+    const snackbarSpy = jest.spyOn(platform, 'wssSendSnackbarMessage').mockImplementation(() => undefined as never);
+
+    await platform.onAction('retrieve', undefined, 'matterbridge-irobot.schema.json', {
+      ...testConfig,
+      username: 'form-user@example.com',
+      password: 'form-password',
+    });
+
+    expect(credentialsSpy).toHaveBeenCalledTimes(1);
+    expect(loggerInfoSpy).toHaveBeenCalledWith(expect.stringContaining('Received action retrieve for schema matterbridge-irobot.schema.json'));
+    expect(loggerInfoSpy).toHaveBeenCalledWith('Retrieving credentials from iRobot cloud...');
+    expect(loggerInfoSpy).toHaveBeenCalledWith('Retrieved 2 iRobots. Adding them to the config...');
+    expect(loggerInfoSpy).toHaveBeenCalledWith('Adding username and password for device with name Existing Robot to config.');
+    expect(loggerInfoSpy).toHaveBeenCalledWith('Adding device with name New Robot to config.');
+
+    expect(snackbarSpy).toHaveBeenNthCalledWith(1, 'Retrieving credentials from iRobot cloud...', 5, 'info');
+    expect(snackbarSpy).toHaveBeenNthCalledWith(2, 'Successfully retrieved 2 iRobots from iRobot cloud. Adding devices to the config...', 30, 'info');
+
+    expect(testConfig.devices).toEqual([
+      {
+        name: 'Existing Robot',
+        ip: '192.168.1.80',
+        blid: 'existing-blid-updated',
+        password: 'existing-password-updated',
+      },
+      {
+        name: 'New Robot',
+        blid: 'new-blid',
+        password: 'new-password',
+      },
+    ]);
+    expect(saveConfigSpy).toHaveBeenCalledTimes(2);
+    expect(saveConfigSpy).toHaveBeenNthCalledWith(1, testConfig);
+    expect(saveConfigSpy).toHaveBeenNthCalledWith(2, testConfig);
+
+    credentialsSpy.mockRestore();
+    saveConfigSpy.mockRestore();
+    snackbarSpy.mockRestore();
+    platform = undefined;
+  });
+
+  it('should warn and avoid saving config when onAction retrieve gets zero credentials', async () => {
+    const credentialsSpy = jest.spyOn(IRobotCredentials.prototype, 'getCredentials').mockResolvedValue([]);
+
+    const testConfig: iRobotPlatformConfig = {
+      ...config,
+      username: 'config-user@example.com',
+      password: 'config-password',
+      devices: [
+        {
+          name: 'Existing Robot',
+          ip: '192.168.1.81',
+          blid: 'old-blid',
+          password: 'old-password',
+        },
+      ],
+    };
+
+    platform = new Platform(matterbridge, log, testConfig);
+    addMatterbridgePlatform(platform);
+
+    const saveConfigSpy = jest.spyOn(platform, 'saveConfig').mockImplementation(() => undefined as never);
+    const snackbarSpy = jest.spyOn(platform, 'wssSendSnackbarMessage').mockImplementation(() => undefined as never);
+
+    await platform.onAction('retrieve', undefined, 'matterbridge-irobot.schema.json', {
+      ...testConfig,
+      username: 'form-user@example.com',
+      password: 'form-password',
+    });
+
+    expect(credentialsSpy).toHaveBeenCalledTimes(1);
+    expect(loggerInfoSpy).toHaveBeenCalledWith('Retrieving credentials from iRobot cloud...');
+    expect(loggerWarnSpy).toHaveBeenCalledWith('No iRobots retrieved. Please check your username and password and try again.');
+
+    expect(snackbarSpy).toHaveBeenNthCalledWith(1, 'Retrieving credentials from iRobot cloud...', 5, 'info');
+    expect(snackbarSpy).toHaveBeenNthCalledWith(2, 'No iRobots retrieved from iRobot cloud. Please check your username and password and try again.', 30, 'warning');
+
+    expect(testConfig.devices).toEqual([
+      {
+        name: 'Existing Robot',
+        ip: '192.168.1.81',
+        blid: 'old-blid',
+        password: 'old-password',
+      },
+    ]);
+    expect(saveConfigSpy).not.toHaveBeenCalled();
+
+    credentialsSpy.mockRestore();
+    saveConfigSpy.mockRestore();
+    snackbarSpy.mockRestore();
     platform = undefined;
   });
 });

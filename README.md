@@ -23,10 +23,23 @@ This plugin allows you to expose the iRobot devices to Matter.
 
 Features:
 
+- devices retrieval from iRobot cloud
 - automatic discover of iRobot on the local network
 
 ## Tested devices
 
-| Model | Supported phases | Tested by |
-| ----- | ---------------- | --------- |
-| sj7   | on, off          | Luligu    |
+| Model   | Supported commands             | Tested by |
+| ------- | ------------------------------ | --------- |
+| j715840 | start stop pause resume goHome | Luligu    |
+
+### How to get your username/blid and password using the plugin config
+
+Put your iRobot account credentials (username and password) in the config editor and click Retrieve.
+
+If it doesn't work use any of the method in [dorita980](https://github.com/koalazak/dorita980).
+
+## Credits
+
+This plugin credits [dorita980](https://github.com/koalazak/dorita980) for the prior work around iRobot account credential retrieval and local robot integration.
+
+The dorita980 project has been a useful reference for understanding the iRobot login flow and for helping users retrieve their BLID and password.

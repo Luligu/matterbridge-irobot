@@ -1,8 +1,30 @@
+/**
+ * @description This file contains the class IRobotDiscovery.
+ * @file src\iRobotDiscovery.ts
+ * @author Luca Liguori
+ * @created 2026-03-25
+ * @version 1.0.0
+ * @license Apache-2.0
+ * @copyright 2026, 2027, 2028 Luca Liguori.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
 import dgram from 'node:dgram';
 
 import { AnsiLogger, LogLevel, TimestampFormat } from 'node-ansi-logger';
 
-export interface DiscoveryInfo {
+export interface IRobotDiscoveryInfo {
   ip: string;
   ver?: string;
   hostname?: string; // Hostname of the device, e.g., 'Roomba-<robotid>' or 'iRobot-<robotid>'
@@ -158,24 +180,24 @@ export interface DiscoveryInfo {
   rinfo: dgram.RemoteInfo;
 }
 
-export class Discovery {
+export class IRobotDiscovery {
   private readonly port = 5678;
   private readonly message = Buffer.from('irobotmcs');
-  private readonly devices = new Map<string, DiscoveryInfo>();
-  private readonly log = new AnsiLogger({ logName: 'Discovery', logLevel: LogLevel.DEBUG, logTimestampFormat: TimestampFormat.TIME_MILLIS });
+  private readonly devices = new Map<string, IRobotDiscoveryInfo>();
+  private readonly log = new AnsiLogger({ logName: 'IRobotDiscovery', logLevel: LogLevel.DEBUG, logTimestampFormat: TimestampFormat.TIME_MILLIS });
 
   /**
    * iRobot Discovery Protocol is udp4 based.
    * It uses a broadcast udp message to port 5678 to discover iRobot devices on the local network.
    * The iRobot app sends a packet with data: 69726f626f746d6373="irobotmcs".
-   * The devices respond with a JSON object DiscoveryInfo containing various fields.
+   * The devices respond with a JSON object IRobotDiscoveryInfo containing various fields.
    *
    * @param {number} timeout - Discovery timeout in milliseconds. Default is 3000ms.
    *
-   * @returns {Promise<DiscoveryInfo[]>} Promise that resolves to an array of discovered devices with their information.
+   * @returns {Promise<IRobotDiscoveryInfo[]>} Promise that resolves to an array of discovered devices with their information.
    * @throws {Error} If there is an error during discovery, such as a socket error or timeout.
    */
-  async discover(timeout: number = 5000): Promise<DiscoveryInfo[]> {
+  async discover(timeout: number = 5000): Promise<IRobotDiscoveryInfo[]> {
     return new Promise((resolve, reject) => {
       const socket = dgram.createSocket('udp4');
 
@@ -186,7 +208,7 @@ export class Discovery {
 
       socket.on('message', (msg, rinfo) => {
         try {
-          const parsed = JSON.parse(msg.toString()) as DiscoveryInfo;
+          const parsed = JSON.parse(msg.toString()) as IRobotDiscoveryInfo;
           const prefix = parsed.hostname?.split('-')[0];
           if ((prefix === 'Roomba' || prefix === 'iRobot') && parsed.ip) {
             parsed.rinfo = rinfo;
@@ -218,11 +240,11 @@ export class Discovery {
    *
    * @param {string} robotIP - IP address of the robot
    * @param {number} timeout - Timeout for the discovery in milliseconds. Default is 5000ms.
-   * @returns {Promise<DiscoveryInfo>} Promise that resolves to robot discovery information
+   * @returns {Promise<IRobotDiscoveryInfo>} Promise that resolves to robot discovery information
    *
    * @throws {Error} If there is an error during the information retrieval, such as a socket error or timeout.
    */
-  async getRobotPublicInfo(robotIP: string, timeout: number = 5000): Promise<DiscoveryInfo> {
+  async getRobotPublicInfo(robotIP: string, timeout: number = 5000): Promise<IRobotDiscoveryInfo> {
     return new Promise((resolve, reject) => {
       const socket = dgram.createSocket('udp4');
 
@@ -239,7 +261,7 @@ export class Discovery {
 
       socket.on('message', (msg, rinfo) => {
         try {
-          const parsedMsg = JSON.parse(msg.toString()) as DiscoveryInfo;
+          const parsedMsg = JSON.parse(msg.toString()) as IRobotDiscoveryInfo;
           this.log.debug(`Received discovery response from ${robotIP}:`, parsedMsg);
           if (parsedMsg.hostname && parsedMsg.ip && (parsedMsg.hostname.split('-')[0] === 'Roomba' || parsedMsg.hostname.split('-')[0] === 'iRobot')) {
             clearTimeout(timeoutId);

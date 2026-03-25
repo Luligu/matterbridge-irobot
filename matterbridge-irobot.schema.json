@@ -35,6 +35,14 @@
       "type": "string",
       "ui:widget": "password"
     },
+    "retrieve": {
+      "title": "Retrieve Credentials",
+      "description": "Retrieve credentials from iRobot cloud.",
+      "type": "boolean",
+      "buttonText": "Retrieve Credentials",
+      "buttonClose": true,
+      "default": false
+    },
     "discovery": {
       "title": "iRobot Discovery",
       "description": "iRobot discovery of new devices on startup.",

@@ -1,12 +1,36 @@
+/**
+ * @description This file contains the class Platform.
+ * @file src\module.ts
+ * @author Luca Liguori
+ * @created 2026-03-25
+ * @version 1.0.0
+ * @license Apache-2.0
+ * @copyright 2026, 2027, 2028 Luca Liguori.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
 import { inspect } from 'node:util';
 
 import { MatterbridgeDynamicPlatform, PlatformConfig, PlatformMatterbridge } from 'matterbridge';
 import { RoboticVacuumCleaner } from 'matterbridge/devices';
 import { AnsiLogger, rs } from 'matterbridge/logger';
 import { PowerSource, RvcCleanMode, RvcOperationalState, RvcRunMode, ServiceArea } from 'matterbridge/matter/clusters';
+import { isValidObject, isValidString } from 'matterbridge/utils';
 
-import { Discovery, DiscoveryInfo } from './discovery.js';
-import { IRobotMqtt } from './iRobot.js';
+import { IRobotDiscovery, IRobotDiscoveryInfo } from './iRobotDiscovery.js';
+import { IRobotCredentials } from './iRobotGetCredentials.js';
+import { IRobotMqtt } from './iRobotMqtt.js';
 
 export interface DeviceConfig {
   name: string;
@@ -16,8 +40,8 @@ export interface DeviceConfig {
 }
 
 export type iRobotPlatformConfig = PlatformConfig & {
-  username: string;
-  password: string;
+  username?: string;
+  password?: string;
   discovery: boolean;
   whiteList: string[];
   blackList: string[];
@@ -104,6 +128,49 @@ export class Platform extends MatterbridgeDynamicPlatform {
     if (this.config.unregisterOnShutdown === true) await this.unregisterAllDevices();
   }
 
+  override async onAction(action: string, value?: string, id?: string, formData?: iRobotPlatformConfig): Promise<void> {
+    this.log.info(`Received action ${action}${value ? ' with ' + value : ''} ${id ? 'for schema ' + id : ''}\n${formData ? JSON.stringify(formData, null, 2) : ''}`);
+    if (
+      action === 'retrieve' &&
+      isValidObject(formData, 5) &&
+      isValidString(formData?.username ?? this.config.username) &&
+      isValidString(formData?.password ?? this.config.password)
+    ) {
+      this.log.info('Retrieving credentials from iRobot cloud...');
+      this.wssSendSnackbarMessage('Retrieving credentials from iRobot cloud...', 5, 'info');
+      const retrive = new IRobotCredentials({
+        username: (formData?.username ?? this.config.username) as string,
+        password: (formData?.password ?? this.config.password) as string,
+      });
+      const credentials = await retrive.getCredentials();
+      this.log.info(`Retrieved credentials:\n ${JSON.stringify(credentials, null, 2)}`);
+      if (credentials.length === 0) {
+        this.log.warn('No iRobots retrieved. Please check your username and password and try again.');
+        this.wssSendSnackbarMessage(`No iRobots retrieved from iRobot cloud. Please check your username and password and try again.`, 30, 'warning');
+        return;
+      } else {
+        this.log.info(`Retrieved ${credentials.length} iRobots. Adding them to the config...`);
+        this.wssSendSnackbarMessage(`Successfully retrieved ${credentials.length} iRobots from iRobot cloud. Adding devices to the config...`, 30, 'info');
+      }
+      for (const robot of credentials) {
+        const device = this.config.devices.find((d) => d.name === robot.name);
+        if (device) {
+          this.log.info(`Adding username and password for device with name ${robot.name} to config.`);
+          device.blid = robot.blid;
+          device.password = robot.password;
+        } else {
+          this.log.info(`Adding device with name ${robot.name} to config.`);
+          this.config.devices.push({
+            name: robot.name ?? `iRobot-${robot.sku}`,
+            blid: robot.blid,
+            password: robot.password,
+          });
+        }
+        this.saveConfig(this.config);
+      }
+    }
+  }
+
   /**
    *  Discover iRobot devices on the local network and add them to the config if not already present.
    *
@@ -111,8 +178,8 @@ export class Platform extends MatterbridgeDynamicPlatform {
    * @returns {Promise<void>} - A promise that resolves when discovery is complete.
    */
   async discoverDevices(timeout: number = 3000): Promise<void> {
-    const discovery = new Discovery();
-    let discoveredDevices: DiscoveryInfo[] = [];
+    const discovery = new IRobotDiscovery();
+    let discoveredDevices: IRobotDiscoveryInfo[] = [];
     try {
       discoveredDevices = await discovery.discover(timeout);
     } catch (error) {
@@ -128,6 +195,7 @@ export class Platform extends MatterbridgeDynamicPlatform {
           blid: device.robotid ?? '',
           password: '',
         });
+        this.saveConfig(this.config);
       }
     }
   }
@@ -145,7 +213,7 @@ export class Platform extends MatterbridgeDynamicPlatform {
       if (device.ip) {
         try {
           this.log.info(`Getting public info for device "${device.name}" with IP ${device.ip}...`);
-          const discovery = new Discovery();
+          const discovery = new IRobotDiscovery();
           const robotInfo = await discovery.getRobotPublicInfo(device.ip, timeout);
           this.log.info(`Public info for device "${device.name}" with IP ${device.ip}:\n`, robotInfo);
         } catch (error) {

@@ -11,7 +11,7 @@ import { afterEach, describe, expect, it, jest } from '@jest/globals';
 import { setupTest } from 'matterbridge/jestutils';
 import type { IClientOptions } from 'mqtt';
 
-import { IRobotMqtt } from './iRobot.js';
+import { IRobotMqtt } from './iRobotMqtt.js';
 
 await setupTest(NAME, false);
 
