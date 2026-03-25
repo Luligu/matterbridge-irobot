@@ -32,6 +32,8 @@ Features:
 | ------- | ------------------------------ | --------- |
 | j715840 | start stop pause resume goHome | Luligu    |
 
+Please let me know what iRobot have been tested too.
+
 ### How to get your username/blid and password using the plugin config
 
 Put your iRobot account credentials (username and password) in the config editor and click Retrieve.

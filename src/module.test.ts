@@ -6,7 +6,7 @@ const CREATE_ONLY = true;
 import path from 'node:path';
 
 import { jest } from '@jest/globals';
-import { invokeSubscribeHandler } from 'matterbridge';
+import { invokeSubscribeHandler, MatterbridgeEndpoint } from 'matterbridge';
 import { RoboticVacuumCleaner } from 'matterbridge/devices';
 import {
   addMatterbridgePlatform,
@@ -35,6 +35,7 @@ await setupTest(NAME, false);
 
 describe('TestPlatform', () => {
   let platform: Platform | undefined;
+  let device: MatterbridgeEndpoint | undefined;
 
   const config: iRobotPlatformConfig = {
     name: 'matterbridge-irobot',
@@ -64,15 +65,7 @@ describe('TestPlatform', () => {
 
   afterEach(async () => {
     // Cleanup after each test
-    if (platform) {
-      try {
-        await platform.onShutdown('test cleanup');
-      } catch {
-        // ignore cleanup errors
-      } finally {
-        platform = undefined;
-      }
-    }
+    jest.clearAllMocks();
   });
 
   afterAll(async () => {
@@ -103,20 +96,30 @@ describe('TestPlatform', () => {
     matterbridge.matterbridgeVersion = savedVersion;
   });
 
-  it('should call lifecycle methods in order', async () => {
+  it('should create platform instance', async () => {
     platform = new Platform(matterbridge, log, config);
+    expect(platform).toBeDefined();
     addMatterbridgePlatform(platform);
     expect(loggerInfoSpy).toHaveBeenCalledWith('Initializing platform:', config.name);
     expect(loggerInfoSpy).toHaveBeenCalledWith('Finished initializing platform:', config.name);
+  });
 
+  it('should call start', async () => {
+    expect(platform).toBeDefined();
+    if (!platform) throw new Error('Platform instance is not defined');
     config.devices = [{ name: 'Test Device' }];
     await platform.onStart('Test reason');
     await flushAsync();
     expect(loggerInfoSpy).toHaveBeenCalledWith('onStart called with reason:', 'Test reason');
     expect(loggerInfoSpy).toHaveBeenCalledWith(`Registering device "${config.devices[0].name}" with IP ${config.devices[0].ip}...`);
-    const device = platform.getDeviceByName(config.devices[0].name);
+  });
+
+  it('should call subscribe handlers', async () => {
+    expect(platform).toBeDefined();
+    if (!platform) throw new Error('Platform instance is not defined');
+    device = platform.getDeviceByName(config.devices[0].name);
     expect(device).toBeDefined();
-    if (!device) throw new Error('Device not found after registration');
+    if (!device) throw new Error('Device instance is not defined');
     await invokeSubscribeHandler(device, RvcOperationalState.Complete, 'currentPhase', 2, 1);
     await invokeSubscribeHandler(
       device,
@@ -125,6 +128,11 @@ describe('TestPlatform', () => {
       RvcOperationalState.OperationalState.SeekingCharger,
       RvcOperationalState.OperationalState.Docked,
     );
+  });
+
+  it('should invoke command handlers', async () => {
+    expect(platform).toBeDefined();
+    if (!platform) throw new Error('Platform instance is not defined');
     await device?.invokeBehaviorCommand(RvcRunMode.Complete as any, 'RvcRunMode.changeToMode', { newMode: 2 });
     await device?.invokeBehaviorCommand(RvcRunMode.Complete as any, 'RvcRunMode.changeToMode', { newMode: 1 });
     await device?.invokeBehaviorCommand(RvcCleanMode.Complete as any, 'RvcRunMode.changeToMode', { newMode: 1 });
@@ -132,15 +140,22 @@ describe('TestPlatform', () => {
     await device?.invokeBehaviorCommand(RvcOperationalState.Complete as any, 'RvcOperationalState.pause');
     await device?.invokeBehaviorCommand(RvcOperationalState.Complete as any, 'RvcOperationalState.resume');
     await device?.invokeBehaviorCommand(RvcOperationalState.Complete as any, 'RvcOperationalState.goHome');
+  });
 
+  it('should configure', async () => {
+    expect(platform).toBeDefined();
+    if (!platform) throw new Error('Platform instance is not defined');
     await platform.onConfigure();
     expect(loggerInfoSpy).toHaveBeenCalledWith('onConfigure called');
+  });
 
+  it('should shutdown', async () => {
+    expect(platform).toBeDefined();
+    if (!platform) throw new Error('Platform instance is not defined');
     await platform.onShutdown('Test reason');
     expect(loggerInfoSpy).toHaveBeenCalledWith('onShutdown called with reason:', 'Test reason');
-
     platform = undefined;
-  }, 30000);
+  });
 
   it('should discover only new devices and map discovered fields into the config', async () => {
     const discoverSpy = jest
