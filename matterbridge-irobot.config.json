@@ -1,0 +1,12 @@
+{
+  "name": "matterbridge-irobot",
+  "type": "DynamicPlatform",
+  "version": "1.0.0",
+  "discovery": true,
+  "devices": [],
+  "whiteList": [],
+  "blackList": [],
+  "enableServerRvc": true,
+  "debug": false,
+  "unregisterOnShutdown": false
+}
