@@ -20,6 +20,7 @@ import {
   loggerNoticeSpy,
   loggerWarnSpy,
   matterbridge,
+  setDebug,
   setupTest,
   startMatterbridgeEnvironment,
   stopMatterbridgeEnvironment,
@@ -66,6 +67,8 @@ describe('TestPlatform', () => {
   afterEach(async () => {
     // Cleanup after each test
     jest.clearAllMocks();
+    // Set debug to false after each test to avoid verbose logging in tests that don't need it
+    await setDebug(false);
   });
 
   afterAll(async () => {
@@ -91,7 +94,7 @@ describe('TestPlatform', () => {
     const savedVersion = matterbridge.matterbridgeVersion;
     matterbridge.matterbridgeVersion = '1.5.0';
     expect(() => new Platform(matterbridge, log, config)).toThrow(
-      'This plugin requires Matterbridge version >= "3.7.0". Please update Matterbridge to the latest version in the frontend.',
+      'This plugin requires Matterbridge version >= "3.7.1". Please update Matterbridge to the latest version in the frontend.',
     );
     matterbridge.matterbridgeVersion = savedVersion;
   });
