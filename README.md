@@ -19,12 +19,12 @@
 
 ---
 
-This plugin allows you to expose the iRobot devices to Matter.
+This plugin allows you to expose iRobot devices to Matter.
 
 Features:
 
-- devices retrieval from iRobot cloud
-- automatic discover of iRobot on the local network
+- device retrieval from the iRobot cloud
+- automatic discovery of iRobot devices on the local network
 
 ## Tested devices
 
@@ -32,13 +32,23 @@ Features:
 | ------- | ------------------------------ | --------- |
 | j715840 | start stop pause resume goHome | Luligu    |
 
-Please let me know what iRobot have been tested too.
+Please let me know which iRobot devices have also been tested.
 
-### How to get your username/blid and password using the plugin config
+## How to get your username/blid and password using the plugin config
 
 Put your iRobot account credentials (username and password) in the config editor and click Retrieve.
 
-If it doesn't work use any of the method in [dorita980](https://github.com/koalazak/dorita980).
+If it doesn't work, use any of the methods in [dorita980](https://github.com/koalazak/dorita980).
+
+> Given the financial issues iRobot is facing, **save your credentials** somewhere safe. If the iRobot platform shuts down, you will not be able to retrieve them anymore.
+
+## Apple Home issues with RVC
+
+As of version 18.4.x, the Home app supports Robot Vacuum Cleaners only as single, non-bridged devices or when the robot is the only device in the bridge. Furthermore, the device cannot be a composed device. The only supported device type is the RVC.
+
+If a robot is present alongside other devices in the bridge, the entire bridge becomes unstable in the Home app.
+
+> If you pair with Apple Home, always set **Enable Server RVC** in the config. With "Enable Server RVC," you will have a separate QR code for pairing each iRobot device you have.
 
 ## Credits
 
