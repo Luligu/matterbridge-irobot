@@ -6,9 +6,9 @@ If you like this project and find it useful, please consider giving it a **star*
 
 <a href="https://www.buymeacoffee.com/luligugithub"><img src="https://matterbridge.io/assets/bmc-button.svg" alt="Buy me a coffee" width="120"></a>
 
-## [0.0.3] - 2026-03-25
+## [0.0.3] - 2026-03-27
 
-First published release.
+First published release. It requires matterbridge v.3.7.1.
 
 <a href="https://www.buymeacoffee.com/luligugithub"><img src="https://matterbridge.io/assets/bmc-button.svg" alt="Buy me a coffee" width="80"></a>
 
