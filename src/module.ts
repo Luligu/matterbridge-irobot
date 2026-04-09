@@ -290,7 +290,7 @@ export class Platform extends MatterbridgeDynamicPlatform {
       rvc.subscribeAttribute(RvcOperationalState.Complete, 'currentPhase', async (newPhase) => {
         const phaseList = rvc.getAttribute(RvcOperationalState.Complete, 'phaseList');
         if (!newPhase || !phaseList) return;
-        rvc.log.notice(`Current Phase changed to ${newPhase}.${phaseList[newPhase]}`);
+        rvc.log.notice(`Current Phase changed to ${newPhase} >>> ${phaseList[newPhase]}`);
       });
 
       rvc.subscribeAttribute(RvcOperationalState.Complete, 'operationalState', async (newState) => {
