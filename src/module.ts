@@ -368,31 +368,31 @@ export class Platform extends MatterbridgeDynamicPlatform {
 
   async parseMqttMessage(rvc: RoboticVacuumCleaner, msg: IRobotMqttMessageReport): Promise<void> {
     if (isValidNumber(msg.state?.reported?.batPct, 1, 100)) {
-      await rvc.setAttribute(PowerSource.Cluster.with(PowerSource.Feature.Battery), 'batPercentRemaining', msg.state.reported.batPct * 2); // iRobot reports battery percentage as 1-100, but Matter expects 1-200, so we multiply by 2.
+      await rvc.setAttribute(PowerSource.Cluster.with(PowerSource.Feature.Battery), 'batPercentRemaining', msg.state.reported.batPct * 2, rvc.log); // iRobot reports battery percentage as 1-100, but Matter expects 1-200, so we multiply by 2.
     }
     if (isValidObject(msg.state?.reported?.cleanMissionStatus, 5)) {
       const status = msg.state.reported.cleanMissionStatus;
       if (status.cycle === 'none') {
         if (status.phase === 'charge') {
-          await rvc.setAttribute(RvcOperationalState.Complete, 'operationalState', RvcOperationalState.OperationalState.Docked);
+          await rvc.setAttribute(RvcOperationalState.Complete, 'operationalState', RvcOperationalState.OperationalState.Docked, rvc.log);
         } else {
-          await rvc.setAttribute(RvcOperationalState.Complete, 'operationalState', RvcOperationalState.OperationalState.Stopped);
+          await rvc.setAttribute(RvcOperationalState.Complete, 'operationalState', RvcOperationalState.OperationalState.Stopped, rvc.log);
         }
       }
       if (status.phase === 'charge') {
-        await rvc.setAttribute(RvcOperationalState.Complete, 'currentPhase', 0);
-        await rvc.setAttribute(PowerSource.Cluster.with(PowerSource.Feature.Rechargeable), 'batChargeState', PowerSource.BatChargeState.IsCharging);
+        await rvc.setAttribute(RvcOperationalState.Complete, 'currentPhase', 0, rvc.log);
+        await rvc.setAttribute(PowerSource.Cluster.with(PowerSource.Feature.Rechargeable), 'batChargeState', PowerSource.BatChargeState.IsCharging, rvc.log);
       } else {
-        await rvc.setAttribute(PowerSource.Cluster.with(PowerSource.Feature.Rechargeable), 'batChargeState', PowerSource.BatChargeState.IsNotCharging);
+        await rvc.setAttribute(PowerSource.Cluster.with(PowerSource.Feature.Rechargeable), 'batChargeState', PowerSource.BatChargeState.IsNotCharging, rvc.log);
       }
       if (status.phase === 'run') {
-        await rvc.setAttribute(RvcOperationalState.Complete, 'currentPhase', 1);
+        await rvc.setAttribute(RvcOperationalState.Complete, 'currentPhase', 1, rvc.log);
       }
       if (status.phase === 'stop') {
-        await rvc.setAttribute(RvcOperationalState.Complete, 'currentPhase', 2);
+        await rvc.setAttribute(RvcOperationalState.Complete, 'currentPhase', 2, rvc.log);
       }
       if (status.phase === 'hmUsrDock') {
-        await rvc.setAttribute(RvcOperationalState.Complete, 'currentPhase', 3);
+        await rvc.setAttribute(RvcOperationalState.Complete, 'currentPhase', 3, rvc.log);
       }
     }
   }
