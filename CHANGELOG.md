@@ -10,7 +10,8 @@ If you like this project and find it useful, please consider giving it a **star*
 
 ### Added
 
-- [setters]: Add setters for presence automations when the controller doesn't allow to lock unlock doors from automations (i.e. Apple Home).
+- [logger]: Add logger level and log on file for the plugin and all devices.
+- [select]: Add select for the platform.
 
 ### Changed
 

@@ -25,6 +25,7 @@ import {
   startMatterbridgeEnvironment,
   stopMatterbridgeEnvironment,
 } from 'matterbridge/jestutils';
+import { LogLevel } from 'matterbridge/logger';
 import { RvcCleanMode, RvcOperationalState, RvcRunMode, ServiceArea } from 'matterbridge/matter/clusters';
 
 import { IRobotDiscovery, type IRobotDiscoveryInfo } from './iRobotDiscovery.js';
@@ -50,6 +51,8 @@ describe('TestPlatform', () => {
     blackList: [],
     enableServerRvc: false,
     debug: false,
+    logLevel: LogLevel.DEBUG,
+    logOnFile: true,
     unregisterOnShutdown: false,
   };
 

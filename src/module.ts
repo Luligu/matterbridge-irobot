@@ -20,19 +20,20 @@
  * limitations under the License.
  */
 
+import { mkdirSync } from 'node:fs';
 import path from 'node:path';
 import { inspect } from 'node:util';
 
-import { MatterbridgeDynamicPlatform, PlatformConfig, PlatformMatterbridge } from 'matterbridge';
+import { BasePlatformConfig, MatterbridgeDynamicPlatform, PlatformMatterbridge } from 'matterbridge';
 import { RoboticVacuumCleaner } from 'matterbridge/devices';
 import { AnsiLogger, rs } from 'matterbridge/logger';
+import { LogLevel } from 'matterbridge/logger';
 import { PowerSource, RvcCleanMode, RvcOperationalState, RvcRunMode, ServiceArea } from 'matterbridge/matter/clusters';
 import { isValidObject, isValidString } from 'matterbridge/utils';
-import { LogLevel } from 'node-ansi-logger';
 
 import { IRobotDiscovery, IRobotDiscoveryInfo } from './iRobotDiscovery.js';
 import { IRobotCredentials } from './iRobotGetCredentials.js';
-import { IRobotMqtt } from './iRobotMqtt.js';
+import { IRobotMqtt, IRobotMqttMessage } from './iRobotMqtt.js';
 
 export interface DeviceConfig {
   name: string;
@@ -41,7 +42,7 @@ export interface DeviceConfig {
   password?: string;
 }
 
-export type iRobotPlatformConfig = PlatformConfig & {
+export type iRobotPlatformConfig = BasePlatformConfig & {
   username?: string;
   password?: string;
   discovery: boolean;
@@ -94,7 +95,8 @@ export class Platform extends MatterbridgeDynamicPlatform {
     this.config.unregisterOnShutdown = this.config.unregisterOnShutdown ?? false;
 
     if (this.config.logOnFile) {
-      this.log.logFilePath = path.join(matterbridge.matterbridgePluginDirectory, this.name, this.name + '.log');
+      mkdirSync(path.join(matterbridge.matterbridgePluginDirectory, this.config.name), { recursive: true });
+      this.log.logFilePath = path.join(matterbridge.matterbridgePluginDirectory, this.config.name, this.config.name + '.log');
     }
     this.log.info('Initializing platform:', this.config.name);
 
@@ -106,6 +108,7 @@ export class Platform extends MatterbridgeDynamicPlatform {
 
     // Ensure the platform is ready for the select.
     await this.ready;
+    await this.clearSelect();
 
     // Discover new devices on the local network and add them to the config.
     if (this.config.discovery) await this.discoverDevices();
@@ -219,6 +222,8 @@ export class Platform extends MatterbridgeDynamicPlatform {
     // Register devices from the config.
     for (const device of this.config.devices) {
       this.log.info(`Registering device "${device.name}" with IP ${device.ip}...`);
+      this.setSelectDevice(device.ip ?? 'unknown-ip-' + device.name.toLowerCase().replaceAll(' ', '-'), device.name);
+      if (!this.validateDevice(device.name, true)) continue;
       if (device.ip) {
         try {
           this.log.info(`Getting public info for device "${device.name}" with IP ${device.ip}...`);
@@ -261,6 +266,10 @@ export class Platform extends MatterbridgeDynamicPlatform {
       );
       await this.registerDevice(rvc);
       await rvc.construction.ready;
+      rvc.log.logLevel = this.config.logLevel;
+      if (this.config.logOnFile) {
+        rvc.log.logFilePath = path.join(this.matterbridge.matterbridgePluginDirectory, this.config.name, device.name.toLowerCase().replaceAll(' ', '-') + '.log');
+      }
       // We assume the robot is docked and the battery is user replaceble and fully charged until we can get battery info.
       await rvc.setAttribute(PowerSource.Cluster.with(PowerSource.Feature.Battery), 'batChargeLevel', PowerSource.BatChargeLevel.Ok); // Set to Ok since we don't have battery info yet.
       await rvc.setAttribute(PowerSource.Cluster.with(PowerSource.Feature.Battery, PowerSource.Feature.Rechargeable), 'batChargeState', PowerSource.BatChargeState.IsAtFullCharge); // Set to IsAtFullCharge since we don't have battery info yet.
@@ -331,7 +340,7 @@ export class Platform extends MatterbridgeDynamicPlatform {
           await robotMqtt.connect();
           // Optional: log state messages when debug is enabled.
           if (this.config.debug) {
-            robotMqtt.on('message', (msg) => {
+            robotMqtt.on('message', (msg: IRobotMqttMessage) => {
               if (msg.json !== undefined) {
                 rvc.log.debug(
                   `${rs}[mqtt] ${msg.topic}:\n${inspect(msg.json, {

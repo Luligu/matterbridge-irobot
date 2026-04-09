@@ -45,9 +45,9 @@
     },
     "discovery": {
       "title": "iRobot Discovery",
-      "description": "iRobot discovery of new devices on startup.",
+      "description": "iRobot discovery of new devices on startup. Once the devices are discovered, you can disable discovery to speed up the startup time.",
       "type": "boolean",
-      "ui:widget": "checkbox"
+      "default": true
     },
     "devices": {
       "title": "Devices",
@@ -106,7 +106,7 @@
     },
     "enableServerRvc": {
       "title": "Enable Server RVC",
-      "description": "Enable the Robot Vacuum Cleaner in server mode (Apple Home will crash unless you use this mode!)",
+      "description": "Enable the Robot Vacuum Cleaner in server mode. It is mandatory with Apple Home (Apple Home will crash unless you use this mode!)",
       "type": "boolean",
       "default": true
     },
@@ -119,14 +119,14 @@
     },
     "logLevel": {
       "title": "Log Level",
-      "description": "Set the log level for the plugin",
+      "description": "Set the log level for the plugin logger and all devices loggers.",
       "type": "string",
       "default": "info",
       "enum": ["debug", "info", "notice", "warn", "error", "fatal"]
     },
     "logOnFile": {
       "title": "Log On File",
-      "description": "Enable logging to a file for the plugin",
+      "description": "Enable logging to file for the plugin logger and all devices loggers. The log files will be stored in the matterbridge plugin directory.",
       "type": "boolean",
       "default": false
     },

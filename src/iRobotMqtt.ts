@@ -48,6 +48,7 @@ export interface IRobotMqttConfig {
 }
 
 export interface IRobotMqttMessage {
+  /** The topic of the MQTT message. */
   topic: string;
   /** Raw payload buffer as received from mqtt.js */
   payload: Buffer;
