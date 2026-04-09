@@ -26,7 +26,7 @@ Features:
 - device retrieval from the iRobot cloud
 - automatic discovery of iRobot devices on the local network
 
-The plugin requires matterbridge v.3.7.1.
+The plugin requires matterbridge v.3.7.3.
 
 ## Tested devices
 

@@ -79,8 +79,8 @@ export class Platform extends MatterbridgeDynamicPlatform {
     super(matterbridge, log, config);
 
     // Verify that Matterbridge is the correct version
-    if (this.verifyMatterbridgeVersion === undefined || typeof this.verifyMatterbridgeVersion !== 'function' || !this.verifyMatterbridgeVersion('3.7.1')) {
-      throw new Error(`This plugin requires Matterbridge version >= "3.7.1". Please update Matterbridge to the latest version in the frontend.`);
+    if (this.verifyMatterbridgeVersion === undefined || typeof this.verifyMatterbridgeVersion !== 'function' || !this.verifyMatterbridgeVersion('3.7.3')) {
+      throw new Error(`This plugin requires Matterbridge version >= "3.7.3". Please update Matterbridge to the latest version in the frontend.`);
     }
 
     // Set default values for configuration properties for old setups that might not have these properties.
@@ -94,6 +94,7 @@ export class Platform extends MatterbridgeDynamicPlatform {
     this.config.logOnFile = this.config.logOnFile ?? false;
     this.config.unregisterOnShutdown = this.config.unregisterOnShutdown ?? false;
 
+    this.log.logLevel = this.config.logLevel;
     if (this.config.logOnFile) {
       mkdirSync(path.join(matterbridge.matterbridgePluginDirectory, this.config.name), { recursive: true });
       this.log.logFilePath = path.join(matterbridge.matterbridgePluginDirectory, this.config.name, this.config.name + '.log');

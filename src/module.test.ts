@@ -97,7 +97,7 @@ describe('TestPlatform', () => {
     const savedVersion = matterbridge.matterbridgeVersion;
     matterbridge.matterbridgeVersion = '1.5.0';
     expect(() => new Platform(matterbridge, log, config)).toThrow(
-      'This plugin requires Matterbridge version >= "3.7.1". Please update Matterbridge to the latest version in the frontend.',
+      'This plugin requires Matterbridge version >= "3.7.3". Please update Matterbridge to the latest version in the frontend.',
     );
     matterbridge.matterbridgeVersion = savedVersion;
   });

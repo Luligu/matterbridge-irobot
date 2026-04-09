@@ -23,6 +23,7 @@ If you like this project and find it useful, please consider giving it a **star*
 - [devcontainer]: Update VS Code settings.
 - [devcontainer]: Leave matterbridge scripts in the cloned repo.
 - [scripts]: Update mb-run script.
+- [matterbridege]: Require matterbridge v.3.7.3.
 
 <a href="https://www.buymeacoffee.com/luligugithub"><img src="https://matterbridge.io/assets/bmc-button.svg" alt="Buy me a coffee" width="80"></a>
 
