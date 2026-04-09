@@ -12,6 +12,9 @@ If you like this project and find it useful, please consider giving it a **star*
 
 - [logger]: Add logger level and log on file for the plugin and all devices.
 - [select]: Add select for the platform.
+- [battery]: Add battery parser with battery level and chanrging status.
+- [cycle]: Add cycle parser.
+- [phase]: Add phase parser.
 
 ### Changed
 

@@ -26,6 +26,43 @@ import { AnsiLogger } from 'matterbridge/logger';
 import { isValidString } from 'matterbridge/utils';
 import { connect, type IClientOptions, type MqttClient } from 'mqtt';
 
+export type IRobotCycle = 'none' | 'clean' | 'evac';
+export type IRobotPhase = 'charge' | 'run' | 'stop' | 'hmUsrDock';
+
+export interface IRobotMqttMessageReport {
+  state: {
+    reported: {
+      batPct: number; // percentage 1-100
+      batteryType: string;
+      bin: {
+        present: boolean;
+        full: boolean;
+        type: string;
+      };
+      cap: Record<string, unknown>;
+      cleanMissionStatus: {
+        cycle: IRobotCycle;
+        phase: IRobotPhase;
+        error: string;
+        notReady: number;
+        initiator: 'manual';
+        missionId: string;
+      };
+      lastCommand: {
+        command: 'clean';
+        initiator: 'localApp';
+        time: number;
+        params: unknown;
+      };
+      name: string;
+      sku: string;
+      softwareVer: string;
+      timezone: string;
+      twoPass: boolean;
+    };
+  };
+}
+
 export type IRobotCommand = 'start' | 'stop' | 'dock' | 'clean' | 'pause' | 'resume';
 
 export interface IRobotMqttConfig {
@@ -53,7 +90,7 @@ export interface IRobotMqttMessage {
   /** Raw payload buffer as received from mqtt.js */
   payload: Buffer;
   /** Parsed JSON if payload is valid JSON; otherwise undefined */
-  json?: unknown;
+  json?: IRobotMqttMessageReport;
 }
 
 type ConnectFn = (url: string, options: IClientOptions) => MqttClient;

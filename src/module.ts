@@ -29,11 +29,11 @@ import { RoboticVacuumCleaner } from 'matterbridge/devices';
 import { AnsiLogger, rs } from 'matterbridge/logger';
 import { LogLevel } from 'matterbridge/logger';
 import { PowerSource, RvcCleanMode, RvcOperationalState, RvcRunMode, ServiceArea } from 'matterbridge/matter/clusters';
-import { isValidObject, isValidString } from 'matterbridge/utils';
+import { isValidNumber, isValidObject, isValidString } from 'matterbridge/utils';
 
 import { IRobotDiscovery, IRobotDiscoveryInfo } from './iRobotDiscovery.js';
 import { IRobotCredentials } from './iRobotGetCredentials.js';
-import { IRobotMqtt, IRobotMqttMessage } from './iRobotMqtt.js';
+import { IRobotMqtt, IRobotMqttMessage, IRobotMqttMessageReport } from './iRobotMqtt.js';
 
 export interface DeviceConfig {
   name: string;
@@ -353,6 +353,7 @@ export class Platform extends MatterbridgeDynamicPlatform {
                     maxStringLength: null,
                   })}`,
                 );
+                this.parseMqttMessage(rvc, msg.json);
               } else {
                 rvc.log.debug(`${rs}[mqtt] ${msg.topic}:\n${msg.payload.toString('utf8')}`);
               }
@@ -361,6 +362,37 @@ export class Platform extends MatterbridgeDynamicPlatform {
         } catch (error) {
           rvc.log.error(`Failed to connect MQTT for device "${device.name}" (${device.ip}):`, error);
         }
+      }
+    }
+  }
+
+  async parseMqttMessage(rvc: RoboticVacuumCleaner, msg: IRobotMqttMessageReport): Promise<void> {
+    if (isValidNumber(msg.state?.reported?.batPct, 1, 100)) {
+      await rvc.setAttribute(PowerSource.Cluster.with(PowerSource.Feature.Battery), 'batPercentRemaining', msg.state.reported.batPct * 2); // iRobot reports battery percentage as 1-100, but Matter expects 1-200, so we multiply by 2.
+    }
+    if (isValidObject(msg.state?.reported?.cleanMissionStatus, 5)) {
+      const status = msg.state.reported.cleanMissionStatus;
+      if (status.cycle === 'none') {
+        if (status.phase === 'charge') {
+          await rvc.setAttribute(RvcOperationalState.Complete, 'operationalState', RvcOperationalState.OperationalState.Docked);
+        } else {
+          await rvc.setAttribute(RvcOperationalState.Complete, 'operationalState', RvcOperationalState.OperationalState.Stopped);
+        }
+      }
+      if (status.phase === 'charge') {
+        await rvc.setAttribute(RvcOperationalState.Complete, 'currentPhase', 0);
+        await rvc.setAttribute(PowerSource.Cluster.with(PowerSource.Feature.Rechargeable), 'batChargeState', PowerSource.BatChargeState.IsCharging);
+      } else {
+        await rvc.setAttribute(PowerSource.Cluster.with(PowerSource.Feature.Rechargeable), 'batChargeState', PowerSource.BatChargeState.IsNotCharging);
+      }
+      if (status.phase === 'run') {
+        await rvc.setAttribute(RvcOperationalState.Complete, 'currentPhase', 1);
+      }
+      if (status.phase === 'stop') {
+        await rvc.setAttribute(RvcOperationalState.Complete, 'currentPhase', 2);
+      }
+      if (status.phase === 'hmUsrDock') {
+        await rvc.setAttribute(RvcOperationalState.Complete, 'currentPhase', 3);
       }
     }
   }
