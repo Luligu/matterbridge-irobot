@@ -427,7 +427,7 @@ describe('TestPlatform', () => {
     expect(getAttributeSpy).toHaveBeenCalledWith(RvcRunMode.Complete, 'supportedModes');
     expect(getAttributeSpy).toHaveBeenCalledWith(RvcCleanMode.Complete, 'supportedModes');
     expect(getAttributeSpy).toHaveBeenCalledWith(expect.anything(), 'phaseList');
-    expect(loggerNoticeSpy).toHaveBeenCalledWith('Current Phase changed to 1.run');
+    expect(loggerNoticeSpy).toHaveBeenCalledWith('Current Phase changed to 1 >>> run');
     expect(loggerNoticeSpy).toHaveBeenCalledWith('Operational State changed to 64');
     expect(loggerNoticeSpy).toHaveBeenCalledWith('Clean Mode changed to Vacuum');
     expect(loggerNoticeSpy).toHaveBeenCalledWith('Received selectAreas: [1, 7]');
@@ -541,7 +541,7 @@ describe('TestPlatform', () => {
     expect(getAttributeSpy).toHaveBeenCalledWith(RvcRunMode.Complete, 'supportedModes');
     expect(getAttributeSpy).toHaveBeenCalledWith(RvcCleanMode.Complete, 'supportedModes');
     expect(getAttributeSpy).toHaveBeenCalledWith(expect.anything(), 'phaseList');
-    expect(loggerNoticeSpy).toHaveBeenCalledWith('Current Phase changed to 1.run');
+    expect(loggerNoticeSpy).toHaveBeenCalledWith('Current Phase changed to 1 >>> run');
     expect(loggerNoticeSpy).toHaveBeenCalledWith('Operational State changed to 64');
     expect(loggerNoticeSpy).toHaveBeenCalledWith('Clean Mode changed to Vacuum');
     expect(loggerNoticeSpy).toHaveBeenCalledWith('Received selectAreas: [1, 7]');
