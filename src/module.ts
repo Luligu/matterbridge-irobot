@@ -384,9 +384,19 @@ export class Platform extends MatterbridgeDynamicPlatform {
       }
       if (status.phase === 'charge') {
         await rvc.setAttribute(RvcOperationalState.Complete, 'currentPhase', 0, rvc.log);
-        await rvc.setAttribute(PowerSource.Cluster.with(PowerSource.Feature.Rechargeable), 'batChargeState', PowerSource.BatChargeState.IsCharging, rvc.log);
+        await rvc.setAttribute(
+          PowerSource.Cluster.with(PowerSource.Feature.Battery, PowerSource.Feature.Rechargeable),
+          'batChargeState',
+          PowerSource.BatChargeState.IsCharging,
+          rvc.log,
+        );
       } else {
-        await rvc.setAttribute(PowerSource.Cluster.with(PowerSource.Feature.Rechargeable), 'batChargeState', PowerSource.BatChargeState.IsNotCharging, rvc.log);
+        await rvc.setAttribute(
+          PowerSource.Cluster.with(PowerSource.Feature.Battery, PowerSource.Feature.Rechargeable),
+          'batChargeState',
+          PowerSource.BatChargeState.IsNotCharging,
+          rvc.log,
+        );
       }
       if (status.phase === 'run') {
         await rvc.setAttribute(RvcOperationalState.Complete, 'currentPhase', 1, rvc.log);
