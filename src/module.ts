@@ -372,6 +372,9 @@ export class Platform extends MatterbridgeDynamicPlatform {
     }
     if (isValidObject(msg.state?.reported?.cleanMissionStatus, 5)) {
       const status = msg.state.reported.cleanMissionStatus;
+      rvc.log.debug(
+        `Parsing cleanMissionStatus: cycle=${status.cycle}, phase=${status.phase}, error=${status.error}, notReady=${status.notReady}, initiator=${status.initiator}, missionId=${status.missionId}`,
+      );
       if (status.cycle === 'none') {
         if (status.phase === 'charge') {
           await rvc.setAttribute(RvcOperationalState.Complete, 'operationalState', RvcOperationalState.OperationalState.Docked, rvc.log);
