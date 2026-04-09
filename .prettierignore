@@ -15,5 +15,4 @@ temp/
 
 # Package specific directories and files that should be ignored
 
-dorita980
-rest980
+iRobotLocal.ts

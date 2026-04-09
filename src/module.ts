@@ -20,6 +20,7 @@
  * limitations under the License.
  */
 
+import path from 'node:path';
 import { inspect } from 'node:util';
 
 import { MatterbridgeDynamicPlatform, PlatformConfig, PlatformMatterbridge } from 'matterbridge';
@@ -27,6 +28,7 @@ import { RoboticVacuumCleaner } from 'matterbridge/devices';
 import { AnsiLogger, rs } from 'matterbridge/logger';
 import { PowerSource, RvcCleanMode, RvcOperationalState, RvcRunMode, ServiceArea } from 'matterbridge/matter/clusters';
 import { isValidObject, isValidString } from 'matterbridge/utils';
+import { LogLevel } from 'node-ansi-logger';
 
 import { IRobotDiscovery, IRobotDiscoveryInfo } from './iRobotDiscovery.js';
 import { IRobotCredentials } from './iRobotGetCredentials.js';
@@ -47,6 +49,8 @@ export type iRobotPlatformConfig = PlatformConfig & {
   blackList: string[];
   enableServerRvc: boolean;
   devices: DeviceConfig[];
+  logLevel: LogLevel;
+  logOnFile: boolean;
 };
 
 /**
@@ -78,8 +82,6 @@ export class Platform extends MatterbridgeDynamicPlatform {
       throw new Error(`This plugin requires Matterbridge version >= "3.7.1". Please update Matterbridge to the latest version in the frontend.`);
     }
 
-    this.log.info('Initializing platform:', this.config.name);
-
     // Set default values for configuration properties for old setups that might not have these properties.
     this.config.discovery = this.config.discovery ?? true;
     this.config.whiteList = this.config.whiteList ?? [];
@@ -87,7 +89,14 @@ export class Platform extends MatterbridgeDynamicPlatform {
     this.config.devices = this.config.devices ?? [];
     this.config.enableServerRvc = this.config.enableServerRvc ?? true;
     this.config.debug = this.config.debug ?? false;
+    this.config.logLevel = this.config.logLevel ?? LogLevel.INFO;
+    this.config.logOnFile = this.config.logOnFile ?? false;
     this.config.unregisterOnShutdown = this.config.unregisterOnShutdown ?? false;
+
+    if (this.config.logOnFile) {
+      this.log.logFilePath = path.join(matterbridge.matterbridgePluginDirectory, this.name, this.name + '.log');
+    }
+    this.log.info('Initializing platform:', this.config.name);
 
     this.log.info('Finished initializing platform:', this.config.name);
   }

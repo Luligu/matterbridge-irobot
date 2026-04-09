@@ -8,5 +8,7 @@
   "blackList": [],
   "enableServerRvc": true,
   "debug": false,
+  "logLevel": "info",
+  "logOnFile": false,
   "unregisterOnShutdown": false
 }

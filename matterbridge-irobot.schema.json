@@ -114,6 +114,20 @@
       "title": "Enable Debug",
       "description": "Enable the debug for the plugin (development only)",
       "type": "boolean",
+      "default": false,
+      "ui:widget": "hidden"
+    },
+    "logLevel": {
+      "title": "Log Level",
+      "description": "Set the log level for the plugin",
+      "type": "string",
+      "default": "info",
+      "enum": ["debug", "info", "notice", "warn", "error", "fatal"]
+    },
+    "logOnFile": {
+      "title": "Log On File",
+      "description": "Enable logging to a file for the plugin",
+      "type": "boolean",
       "default": false
     },
     "unregisterOnShutdown": {
