@@ -30,9 +30,9 @@ The plugin requires matterbridge v.3.7.3.
 
 ## Tested devices
 
-| Model   | Supported commands             | Tested by |
-| ------- | ------------------------------ | --------- |
-| j715840 | start stop pause resume goHome | Luligu    |
+| Model   | Supported commands             | Supported phases          | Tested by |
+| ------- | ------------------------------ | ------------------------- | --------- |
+| j715840 | start stop pause resume goHome | charge run stop hmUsrDock | Luligu    |
 
 Please let me know which iRobot devices have also been tested.
 
