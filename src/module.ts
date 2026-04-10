@@ -20,17 +20,20 @@
  * limitations under the License.
  */
 
+import { mkdirSync } from 'node:fs';
+import path from 'node:path';
 import { inspect } from 'node:util';
 
-import { MatterbridgeDynamicPlatform, PlatformConfig, PlatformMatterbridge } from 'matterbridge';
+import { BasePlatformConfig, MatterbridgeDynamicPlatform, PlatformMatterbridge } from 'matterbridge';
 import { RoboticVacuumCleaner } from 'matterbridge/devices';
 import { AnsiLogger, rs } from 'matterbridge/logger';
+import { LogLevel } from 'matterbridge/logger';
 import { PowerSource, RvcCleanMode, RvcOperationalState, RvcRunMode, ServiceArea } from 'matterbridge/matter/clusters';
-import { isValidObject, isValidString } from 'matterbridge/utils';
+import { isValidNumber, isValidObject, isValidString } from 'matterbridge/utils';
 
 import { IRobotDiscovery, IRobotDiscoveryInfo } from './iRobotDiscovery.js';
 import { IRobotCredentials } from './iRobotGetCredentials.js';
-import { IRobotMqtt } from './iRobotMqtt.js';
+import { IRobotMqtt, IRobotMqttMessage, IRobotMqttMessageReport } from './iRobotMqtt.js';
 
 export interface DeviceConfig {
   name: string;
@@ -39,7 +42,7 @@ export interface DeviceConfig {
   password?: string;
 }
 
-export type iRobotPlatformConfig = PlatformConfig & {
+export type iRobotPlatformConfig = BasePlatformConfig & {
   username?: string;
   password?: string;
   discovery: boolean;
@@ -47,6 +50,8 @@ export type iRobotPlatformConfig = PlatformConfig & {
   blackList: string[];
   enableServerRvc: boolean;
   devices: DeviceConfig[];
+  logLevel: LogLevel;
+  logOnFile: boolean;
 };
 
 /**
@@ -74,11 +79,9 @@ export class Platform extends MatterbridgeDynamicPlatform {
     super(matterbridge, log, config);
 
     // Verify that Matterbridge is the correct version
-    if (this.verifyMatterbridgeVersion === undefined || typeof this.verifyMatterbridgeVersion !== 'function' || !this.verifyMatterbridgeVersion('3.7.1')) {
-      throw new Error(`This plugin requires Matterbridge version >= "3.7.1". Please update Matterbridge to the latest version in the frontend.`);
+    if (this.verifyMatterbridgeVersion === undefined || typeof this.verifyMatterbridgeVersion !== 'function' || !this.verifyMatterbridgeVersion('3.7.3')) {
+      throw new Error(`This plugin requires Matterbridge version >= "3.7.3". Please update Matterbridge to the latest version in the frontend.`);
     }
-
-    this.log.info('Initializing platform:', this.config.name);
 
     // Set default values for configuration properties for old setups that might not have these properties.
     this.config.discovery = this.config.discovery ?? true;
@@ -87,7 +90,16 @@ export class Platform extends MatterbridgeDynamicPlatform {
     this.config.devices = this.config.devices ?? [];
     this.config.enableServerRvc = this.config.enableServerRvc ?? true;
     this.config.debug = this.config.debug ?? false;
+    this.config.logLevel = this.config.logLevel ?? LogLevel.INFO;
+    this.config.logOnFile = this.config.logOnFile ?? false;
     this.config.unregisterOnShutdown = this.config.unregisterOnShutdown ?? false;
+
+    this.log.logLevel = this.config.logLevel;
+    if (this.config.logOnFile) {
+      mkdirSync(path.join(matterbridge.matterbridgePluginDirectory, this.config.name), { recursive: true });
+      this.log.logFilePath = path.join(matterbridge.matterbridgePluginDirectory, this.config.name, this.config.name + '.log');
+    }
+    this.log.info('Initializing platform:', this.config.name);
 
     this.log.info('Finished initializing platform:', this.config.name);
   }
@@ -97,6 +109,7 @@ export class Platform extends MatterbridgeDynamicPlatform {
 
     // Ensure the platform is ready for the select.
     await this.ready;
+    await this.clearSelect();
 
     // Discover new devices on the local network and add them to the config.
     if (this.config.discovery) await this.discoverDevices();
@@ -210,6 +223,8 @@ export class Platform extends MatterbridgeDynamicPlatform {
     // Register devices from the config.
     for (const device of this.config.devices) {
       this.log.info(`Registering device "${device.name}" with IP ${device.ip}...`);
+      this.setSelectDevice(device.ip ?? 'unknown-ip-' + device.name.toLowerCase().replaceAll(' ', '-'), device.name);
+      if (!this.validateDevice(device.name, true)) continue;
       if (device.ip) {
         try {
           this.log.info(`Getting public info for device "${device.name}" with IP ${device.ip}...`);
@@ -252,6 +267,10 @@ export class Platform extends MatterbridgeDynamicPlatform {
       );
       await this.registerDevice(rvc);
       await rvc.construction.ready;
+      rvc.log.logLevel = this.config.logLevel;
+      if (this.config.logOnFile) {
+        rvc.log.logFilePath = path.join(this.matterbridge.matterbridgePluginDirectory, this.config.name, device.name.toLowerCase().replaceAll(' ', '-') + '.log');
+      }
       // We assume the robot is docked and the battery is user replaceble and fully charged until we can get battery info.
       await rvc.setAttribute(PowerSource.Cluster.with(PowerSource.Feature.Battery), 'batChargeLevel', PowerSource.BatChargeLevel.Ok); // Set to Ok since we don't have battery info yet.
       await rvc.setAttribute(PowerSource.Cluster.with(PowerSource.Feature.Battery, PowerSource.Feature.Rechargeable), 'batChargeState', PowerSource.BatChargeState.IsAtFullCharge); // Set to IsAtFullCharge since we don't have battery info yet.
@@ -271,7 +290,7 @@ export class Platform extends MatterbridgeDynamicPlatform {
       rvc.subscribeAttribute(RvcOperationalState.Complete, 'currentPhase', async (newPhase) => {
         const phaseList = rvc.getAttribute(RvcOperationalState.Complete, 'phaseList');
         if (!newPhase || !phaseList) return;
-        rvc.log.notice(`Current Phase changed to ${newPhase}.${phaseList[newPhase]}`);
+        rvc.log.notice(`Current Phase changed to ${newPhase} >>> ${phaseList[newPhase]}`);
       });
 
       rvc.subscribeAttribute(RvcOperationalState.Complete, 'operationalState', async (newState) => {
@@ -322,7 +341,7 @@ export class Platform extends MatterbridgeDynamicPlatform {
           await robotMqtt.connect();
           // Optional: log state messages when debug is enabled.
           if (this.config.debug) {
-            robotMqtt.on('message', (msg) => {
+            robotMqtt.on('message', (msg: IRobotMqttMessage) => {
               if (msg.json !== undefined) {
                 rvc.log.debug(
                   `${rs}[mqtt] ${msg.topic}:\n${inspect(msg.json, {
@@ -334,6 +353,7 @@ export class Platform extends MatterbridgeDynamicPlatform {
                     maxStringLength: null,
                   })}`,
                 );
+                this.parseMqttMessage(rvc, msg.json);
               } else {
                 rvc.log.debug(`${rs}[mqtt] ${msg.topic}:\n${msg.payload.toString('utf8')}`);
               }
@@ -342,6 +362,50 @@ export class Platform extends MatterbridgeDynamicPlatform {
         } catch (error) {
           rvc.log.error(`Failed to connect MQTT for device "${device.name}" (${device.ip}):`, error);
         }
+      }
+    }
+  }
+
+  async parseMqttMessage(rvc: RoboticVacuumCleaner, msg: IRobotMqttMessageReport): Promise<void> {
+    if (isValidNumber(msg.state?.reported?.batPct, 1, 100)) {
+      await rvc.setAttribute(PowerSource.Cluster.with(PowerSource.Feature.Battery), 'batPercentRemaining', msg.state.reported.batPct * 2, rvc.log); // iRobot reports battery percentage as 1-100, but Matter expects 1-200, so we multiply by 2.
+    }
+    if (isValidObject(msg.state?.reported?.cleanMissionStatus, 5)) {
+      const status = msg.state.reported.cleanMissionStatus;
+      rvc.log.debug(
+        `Parsing cleanMissionStatus: cycle=${status.cycle}, phase=${status.phase}, error=${status.error}, notReady=${status.notReady}, initiator=${status.initiator}, missionId=${status.missionId}`,
+      );
+      if (status.cycle === 'none') {
+        if (status.phase === 'charge') {
+          await rvc.setAttribute(RvcOperationalState.Complete, 'operationalState', RvcOperationalState.OperationalState.Docked, rvc.log);
+        } else {
+          await rvc.setAttribute(RvcOperationalState.Complete, 'operationalState', RvcOperationalState.OperationalState.Stopped, rvc.log);
+        }
+      }
+      if (status.phase === 'charge') {
+        await rvc.setAttribute(RvcOperationalState.Complete, 'currentPhase', 0, rvc.log);
+        await rvc.setAttribute(
+          PowerSource.Cluster.with(PowerSource.Feature.Battery, PowerSource.Feature.Rechargeable),
+          'batChargeState',
+          PowerSource.BatChargeState.IsCharging,
+          rvc.log,
+        );
+      } else {
+        await rvc.setAttribute(
+          PowerSource.Cluster.with(PowerSource.Feature.Battery, PowerSource.Feature.Rechargeable),
+          'batChargeState',
+          PowerSource.BatChargeState.IsNotCharging,
+          rvc.log,
+        );
+      }
+      if (status.phase === 'run') {
+        await rvc.setAttribute(RvcOperationalState.Complete, 'currentPhase', 1, rvc.log);
+      }
+      if (status.phase === 'stop') {
+        await rvc.setAttribute(RvcOperationalState.Complete, 'currentPhase', 2, rvc.log);
+      }
+      if (status.phase === 'hmUsrDock') {
+        await rvc.setAttribute(RvcOperationalState.Complete, 'currentPhase', 3, rvc.log);
       }
     }
   }

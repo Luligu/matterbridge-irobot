@@ -20,12 +20,14 @@ import {
   loggerNoticeSpy,
   loggerWarnSpy,
   matterbridge,
+  setAttributeSpy,
   setDebug,
   setupTest,
   startMatterbridgeEnvironment,
   stopMatterbridgeEnvironment,
 } from 'matterbridge/jestutils';
-import { RvcCleanMode, RvcOperationalState, RvcRunMode, ServiceArea } from 'matterbridge/matter/clusters';
+import { LogLevel } from 'matterbridge/logger';
+import { PowerSource, RvcCleanMode, RvcOperationalState, RvcRunMode, ServiceArea } from 'matterbridge/matter/clusters';
 
 import { IRobotDiscovery, type IRobotDiscoveryInfo } from './iRobotDiscovery.js';
 import { IRobotCredentials } from './iRobotGetCredentials.js';
@@ -50,6 +52,8 @@ describe('TestPlatform', () => {
     blackList: [],
     enableServerRvc: false,
     debug: false,
+    logLevel: LogLevel.DEBUG,
+    logOnFile: true,
     unregisterOnShutdown: false,
   };
 
@@ -94,7 +98,7 @@ describe('TestPlatform', () => {
     const savedVersion = matterbridge.matterbridgeVersion;
     matterbridge.matterbridgeVersion = '1.5.0';
     expect(() => new Platform(matterbridge, log, config)).toThrow(
-      'This plugin requires Matterbridge version >= "3.7.1". Please update Matterbridge to the latest version in the frontend.',
+      'This plugin requires Matterbridge version >= "3.7.3". Please update Matterbridge to the latest version in the frontend.',
     );
     matterbridge.matterbridgeVersion = savedVersion;
   });
@@ -150,6 +154,87 @@ describe('TestPlatform', () => {
     if (!platform) throw new Error('Platform instance is not defined');
     await platform.onConfigure();
     expect(loggerInfoSpy).toHaveBeenCalledWith('onConfigure called');
+  });
+
+  it('should parse MQTT messages', async () => {
+    expect(platform).toBeDefined();
+    expect(device).toBeDefined();
+    if (!platform) throw new Error('Platform instance is not defined');
+    if (!device) throw new Error('Device instance is not defined');
+
+    await platform.parseMqttMessage(device as RoboticVacuumCleaner, { state: { reported: { batPct: 50 } } } as any);
+    expect(setAttributeSpy).toHaveBeenCalledWith(expect.anything(), 'batPercentRemaining', 100, expect.anything());
+
+    setAttributeSpy.mockClear();
+    await platform.parseMqttMessage(device as RoboticVacuumCleaner, { state: { reported: { batPct: 0 } } } as any);
+    expect(setAttributeSpy).not.toHaveBeenCalled();
+
+    const baseStatus = {
+      cycle: 'none',
+      phase: 'charge',
+      error: 0,
+      notReady: 0,
+      initiator: 'app',
+      missionId: 'mission-1',
+    };
+
+    setAttributeSpy.mockClear();
+    await platform.parseMqttMessage(
+      device as RoboticVacuumCleaner,
+      {
+        state: {
+          reported: {
+            cleanMissionStatus: baseStatus,
+          },
+        },
+      } as any,
+    );
+    expect(setAttributeSpy).toHaveBeenCalledWith(expect.anything(), 'operationalState', RvcOperationalState.OperationalState.Docked, expect.anything());
+    expect(setAttributeSpy).toHaveBeenCalledWith(expect.anything(), 'currentPhase', 0, expect.anything());
+    expect(setAttributeSpy).toHaveBeenCalledWith(expect.anything(), 'batChargeState', PowerSource.BatChargeState.IsCharging, expect.anything());
+
+    setAttributeSpy.mockClear();
+    await platform.parseMqttMessage(
+      device as RoboticVacuumCleaner,
+      {
+        state: {
+          reported: {
+            cleanMissionStatus: { ...baseStatus, phase: 'run' },
+          },
+        },
+      } as any,
+    );
+    expect(setAttributeSpy).toHaveBeenCalledWith(expect.anything(), 'operationalState', RvcOperationalState.OperationalState.Stopped, expect.anything());
+    expect(setAttributeSpy).toHaveBeenCalledWith(expect.anything(), 'batChargeState', PowerSource.BatChargeState.IsNotCharging, expect.anything());
+    expect(setAttributeSpy).toHaveBeenCalledWith(expect.anything(), 'currentPhase', 1, expect.anything());
+
+    setAttributeSpy.mockClear();
+    await platform.parseMqttMessage(
+      device as RoboticVacuumCleaner,
+      {
+        state: {
+          reported: {
+            cleanMissionStatus: { ...baseStatus, phase: 'stop' },
+          },
+        },
+      } as any,
+    );
+    expect(setAttributeSpy).toHaveBeenCalledWith(expect.anything(), 'batChargeState', PowerSource.BatChargeState.IsNotCharging, expect.anything());
+    expect(setAttributeSpy).toHaveBeenCalledWith(expect.anything(), 'currentPhase', 2, expect.anything());
+
+    setAttributeSpy.mockClear();
+    await platform.parseMqttMessage(
+      device as RoboticVacuumCleaner,
+      {
+        state: {
+          reported: {
+            cleanMissionStatus: { ...baseStatus, phase: 'hmUsrDock' },
+          },
+        },
+      } as any,
+    );
+    expect(setAttributeSpy).toHaveBeenCalledWith(expect.anything(), 'batChargeState', PowerSource.BatChargeState.IsNotCharging, expect.anything());
+    expect(setAttributeSpy).toHaveBeenCalledWith(expect.anything(), 'currentPhase', 3, expect.anything());
   });
 
   it('should shutdown', async () => {
@@ -342,7 +427,7 @@ describe('TestPlatform', () => {
     expect(getAttributeSpy).toHaveBeenCalledWith(RvcRunMode.Complete, 'supportedModes');
     expect(getAttributeSpy).toHaveBeenCalledWith(RvcCleanMode.Complete, 'supportedModes');
     expect(getAttributeSpy).toHaveBeenCalledWith(expect.anything(), 'phaseList');
-    expect(loggerNoticeSpy).toHaveBeenCalledWith('Current Phase changed to 1.run');
+    expect(loggerNoticeSpy).toHaveBeenCalledWith('Current Phase changed to 1 >>> run');
     expect(loggerNoticeSpy).toHaveBeenCalledWith('Operational State changed to 64');
     expect(loggerNoticeSpy).toHaveBeenCalledWith('Clean Mode changed to Vacuum');
     expect(loggerNoticeSpy).toHaveBeenCalledWith('Received selectAreas: [1, 7]');
@@ -456,7 +541,7 @@ describe('TestPlatform', () => {
     expect(getAttributeSpy).toHaveBeenCalledWith(RvcRunMode.Complete, 'supportedModes');
     expect(getAttributeSpy).toHaveBeenCalledWith(RvcCleanMode.Complete, 'supportedModes');
     expect(getAttributeSpy).toHaveBeenCalledWith(expect.anything(), 'phaseList');
-    expect(loggerNoticeSpy).toHaveBeenCalledWith('Current Phase changed to 1.run');
+    expect(loggerNoticeSpy).toHaveBeenCalledWith('Current Phase changed to 1 >>> run');
     expect(loggerNoticeSpy).toHaveBeenCalledWith('Operational State changed to 64');
     expect(loggerNoticeSpy).toHaveBeenCalledWith('Clean Mode changed to Vacuum');
     expect(loggerNoticeSpy).toHaveBeenCalledWith('Received selectAreas: [1, 7]');
