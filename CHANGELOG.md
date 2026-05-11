@@ -30,7 +30,7 @@ If you like this project and find it useful, please consider giving it a **star*
 - [workflows]: Add Node.js 26 to `build.yml` Node matrix and remove Node.js 20.
 - [devcontainer]: Add `Claude Code for VS Code extension` to Dev Container.
 - [jest]: Add `jest` v.2.0.1 config.
-- [eslint]: Add `eslint` v.2.0.2 config.
+- [eslint]: Add `eslint` v.2.0.3 config.
 - [prettier]: Add `prettier` v.2.0.0 config.
 - [agent]: Add `.github\copilot-instructions.md` for copilot.
 - [agent]: Add `.claude\CLAUDE.md` for claude.
