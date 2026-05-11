@@ -79,7 +79,7 @@ export class Platform extends MatterbridgeDynamicPlatform {
     super(matterbridge, log, config);
 
     // Verify that Matterbridge is the correct version
-    if (this.verifyMatterbridgeVersion === undefined || typeof this.verifyMatterbridgeVersion !== 'function' || !this.verifyMatterbridgeVersion('3.7.3')) {
+    if (typeof this.verifyMatterbridgeVersion !== 'function' || !this.verifyMatterbridgeVersion('3.7.3')) {
       throw new Error(`This plugin requires Matterbridge version >= "3.7.3". Please update Matterbridge to the latest version in the frontend.`);
     }
 
@@ -287,13 +287,13 @@ export class Platform extends MatterbridgeDynamicPlatform {
       });
 
       // Subscribe to changes in the RvcOperationalState.
-      rvc.subscribeAttribute(RvcOperationalState.Complete, 'currentPhase', async (newPhase) => {
+      await rvc.subscribeAttribute(RvcOperationalState.Complete, 'currentPhase', (newPhase) => {
         const phaseList = rvc.getAttribute(RvcOperationalState.Complete, 'phaseList');
         if (!newPhase || !phaseList) return;
         rvc.log.notice(`Current Phase changed to ${newPhase} >>> ${phaseList[newPhase]}`);
       });
 
-      rvc.subscribeAttribute(RvcOperationalState.Complete, 'operationalState', async (newState) => {
+      await rvc.subscribeAttribute(RvcOperationalState.Complete, 'operationalState', (newState) => {
         rvc.log.notice(`Operational State changed to ${newState}`);
       });
 
@@ -309,7 +309,7 @@ export class Platform extends MatterbridgeDynamicPlatform {
         }
       });
 
-      rvc.addCommandHandler('RvcCleanMode.changeToMode', async ({ request }) => {
+      rvc.addCommandHandler('RvcCleanMode.changeToMode', ({ request }) => {
         const selectedMode = rvc.getAttribute(RvcCleanMode.Complete, 'supportedModes')?.find((s) => s.mode === request.newMode);
         rvc.log.notice(`Clean Mode changed to ${selectedMode?.label ?? 'unknown'}`);
       });
@@ -353,7 +353,7 @@ export class Platform extends MatterbridgeDynamicPlatform {
                     maxStringLength: null,
                   })}`,
                 );
-                this.parseMqttMessage(rvc, msg.json);
+                void this.parseMqttMessage(rvc, msg.json).catch(/* istanbul ignore next */ () => {});
               } else {
                 rvc.log.debug(`${rs}[mqtt] ${msg.topic}:\n${msg.payload.toString('utf8')}`);
               }

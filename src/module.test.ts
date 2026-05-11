@@ -1,9 +1,6 @@
 const MATTER_PORT = 6000;
 const NAME = 'Platform';
-const HOMEDIR = path.join('jest', NAME);
 const CREATE_ONLY = true;
-
-import path from 'node:path';
 
 import { jest } from '@jest/globals';
 import { invokeSubscribeHandler, MatterbridgeEndpoint } from 'matterbridge';
@@ -34,7 +31,7 @@ import { IRobotCredentials } from './iRobotGetCredentials.js';
 import { IRobotMqtt } from './iRobotMqtt.js';
 import initializePlugin, { iRobotPlatformConfig, Platform } from './module.js';
 
-await setupTest(NAME, false);
+await setupTest(NAME);
 
 describe('TestPlatform', () => {
   let platform: Platform | undefined;
@@ -59,7 +56,7 @@ describe('TestPlatform', () => {
 
   beforeAll(async () => {
     // Create Matterbridge environment
-    await createMatterbridgeEnvironment(NAME, CREATE_ONLY);
+    await createMatterbridgeEnvironment();
     await startMatterbridgeEnvironment(MATTER_PORT, CREATE_ONLY);
   });
 
