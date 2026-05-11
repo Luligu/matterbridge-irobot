@@ -1,9 +1,6 @@
 const MATTER_PORT = 6000;
 const NAME = 'Platform';
-const HOMEDIR = path.join('jest', NAME);
 const CREATE_ONLY = true;
-
-import path from 'node:path';
 
 import { jest } from '@jest/globals';
 import { invokeSubscribeHandler, MatterbridgeEndpoint } from 'matterbridge';
@@ -20,7 +17,7 @@ import {
   loggerNoticeSpy,
   loggerWarnSpy,
   matterbridge,
-  setAttributeSpy,
+  setAttributeMatterbridgeEndpointSpy,
   setDebug,
   setupTest,
   startMatterbridgeEnvironment,
@@ -34,7 +31,7 @@ import { IRobotCredentials } from './iRobotGetCredentials.js';
 import { IRobotMqtt } from './iRobotMqtt.js';
 import initializePlugin, { iRobotPlatformConfig, Platform } from './module.js';
 
-await setupTest(NAME, false);
+await setupTest(NAME);
 
 describe('TestPlatform', () => {
   let platform: Platform | undefined;
@@ -59,7 +56,7 @@ describe('TestPlatform', () => {
 
   beforeAll(async () => {
     // Create Matterbridge environment
-    await createMatterbridgeEnvironment(NAME, CREATE_ONLY);
+    await createMatterbridgeEnvironment();
     await startMatterbridgeEnvironment(MATTER_PORT, CREATE_ONLY);
   });
 
@@ -163,11 +160,11 @@ describe('TestPlatform', () => {
     if (!device) throw new Error('Device instance is not defined');
 
     await platform.parseMqttMessage(device as RoboticVacuumCleaner, { state: { reported: { batPct: 50 } } } as any);
-    expect(setAttributeSpy).toHaveBeenCalledWith(expect.anything(), 'batPercentRemaining', 100, expect.anything());
+    expect(setAttributeMatterbridgeEndpointSpy).toHaveBeenCalledWith(expect.anything(), 'batPercentRemaining', 100, expect.anything());
 
-    setAttributeSpy.mockClear();
+    setAttributeMatterbridgeEndpointSpy.mockClear();
     await platform.parseMqttMessage(device as RoboticVacuumCleaner, { state: { reported: { batPct: 0 } } } as any);
-    expect(setAttributeSpy).not.toHaveBeenCalled();
+    expect(setAttributeMatterbridgeEndpointSpy).not.toHaveBeenCalled();
 
     const baseStatus = {
       cycle: 'none',
@@ -178,7 +175,7 @@ describe('TestPlatform', () => {
       missionId: 'mission-1',
     };
 
-    setAttributeSpy.mockClear();
+    setAttributeMatterbridgeEndpointSpy.mockClear();
     await platform.parseMqttMessage(
       device as RoboticVacuumCleaner,
       {
@@ -189,11 +186,11 @@ describe('TestPlatform', () => {
         },
       } as any,
     );
-    expect(setAttributeSpy).toHaveBeenCalledWith(expect.anything(), 'operationalState', RvcOperationalState.OperationalState.Docked, expect.anything());
-    expect(setAttributeSpy).toHaveBeenCalledWith(expect.anything(), 'currentPhase', 0, expect.anything());
-    expect(setAttributeSpy).toHaveBeenCalledWith(expect.anything(), 'batChargeState', PowerSource.BatChargeState.IsCharging, expect.anything());
+    expect(setAttributeMatterbridgeEndpointSpy).toHaveBeenCalledWith(expect.anything(), 'operationalState', RvcOperationalState.OperationalState.Docked, expect.anything());
+    expect(setAttributeMatterbridgeEndpointSpy).toHaveBeenCalledWith(expect.anything(), 'currentPhase', 0, expect.anything());
+    expect(setAttributeMatterbridgeEndpointSpy).toHaveBeenCalledWith(expect.anything(), 'batChargeState', PowerSource.BatChargeState.IsCharging, expect.anything());
 
-    setAttributeSpy.mockClear();
+    setAttributeMatterbridgeEndpointSpy.mockClear();
     await platform.parseMqttMessage(
       device as RoboticVacuumCleaner,
       {
@@ -204,11 +201,11 @@ describe('TestPlatform', () => {
         },
       } as any,
     );
-    expect(setAttributeSpy).toHaveBeenCalledWith(expect.anything(), 'operationalState', RvcOperationalState.OperationalState.Stopped, expect.anything());
-    expect(setAttributeSpy).toHaveBeenCalledWith(expect.anything(), 'batChargeState', PowerSource.BatChargeState.IsNotCharging, expect.anything());
-    expect(setAttributeSpy).toHaveBeenCalledWith(expect.anything(), 'currentPhase', 1, expect.anything());
+    expect(setAttributeMatterbridgeEndpointSpy).toHaveBeenCalledWith(expect.anything(), 'operationalState', RvcOperationalState.OperationalState.Stopped, expect.anything());
+    expect(setAttributeMatterbridgeEndpointSpy).toHaveBeenCalledWith(expect.anything(), 'batChargeState', PowerSource.BatChargeState.IsNotCharging, expect.anything());
+    expect(setAttributeMatterbridgeEndpointSpy).toHaveBeenCalledWith(expect.anything(), 'currentPhase', 1, expect.anything());
 
-    setAttributeSpy.mockClear();
+    setAttributeMatterbridgeEndpointSpy.mockClear();
     await platform.parseMqttMessage(
       device as RoboticVacuumCleaner,
       {
@@ -219,10 +216,10 @@ describe('TestPlatform', () => {
         },
       } as any,
     );
-    expect(setAttributeSpy).toHaveBeenCalledWith(expect.anything(), 'batChargeState', PowerSource.BatChargeState.IsNotCharging, expect.anything());
-    expect(setAttributeSpy).toHaveBeenCalledWith(expect.anything(), 'currentPhase', 2, expect.anything());
+    expect(setAttributeMatterbridgeEndpointSpy).toHaveBeenCalledWith(expect.anything(), 'batChargeState', PowerSource.BatChargeState.IsNotCharging, expect.anything());
+    expect(setAttributeMatterbridgeEndpointSpy).toHaveBeenCalledWith(expect.anything(), 'currentPhase', 2, expect.anything());
 
-    setAttributeSpy.mockClear();
+    setAttributeMatterbridgeEndpointSpy.mockClear();
     await platform.parseMqttMessage(
       device as RoboticVacuumCleaner,
       {
@@ -233,8 +230,8 @@ describe('TestPlatform', () => {
         },
       } as any,
     );
-    expect(setAttributeSpy).toHaveBeenCalledWith(expect.anything(), 'batChargeState', PowerSource.BatChargeState.IsNotCharging, expect.anything());
-    expect(setAttributeSpy).toHaveBeenCalledWith(expect.anything(), 'currentPhase', 3, expect.anything());
+    expect(setAttributeMatterbridgeEndpointSpy).toHaveBeenCalledWith(expect.anything(), 'batChargeState', PowerSource.BatChargeState.IsNotCharging, expect.anything());
+    expect(setAttributeMatterbridgeEndpointSpy).toHaveBeenCalledWith(expect.anything(), 'currentPhase', 3, expect.anything());
   });
 
   it('should shutdown', async () => {

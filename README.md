@@ -19,6 +19,10 @@
 
 ---
 
+<a href="https://github.com/Luligu/matterbridge-irobot">
+  <img src="https://matterbridge.io/assets/irobot.svg" alt="iRobot logo" width="100" />
+</a>
+
 This plugin allows you to expose iRobot devices to Matter.
 
 Features:

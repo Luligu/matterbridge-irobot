@@ -169,14 +169,16 @@ export class IRobotMqtt extends EventEmitter {
     this.config.logger?.debug(`IRobotMqtt connecting to ${url}...`);
     this.client = this.connectFn(url, options);
 
-    this.client.on('connect', async () => {
+    this.client.on('connect', () => {
       this.config.logger?.info(`IRobotMqtt connected to ${this.config.ip}`);
       this.emit('connect');
-      try {
-        await this.subscribe(this.config.subscribeTopics);
-      } catch (error) {
-        this.config.logger?.warn('IRobotMqtt subscribe failed:', error);
-      }
+      void (async () => {
+        try {
+          await this.subscribe(this.config.subscribeTopics);
+        } catch (error) {
+          this.config.logger?.warn('IRobotMqtt subscribe failed:', error);
+        }
+      })();
     });
 
     this.client.on('reconnect', () => {
