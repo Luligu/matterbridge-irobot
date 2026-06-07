@@ -346,7 +346,7 @@ describe('TestPlatform', () => {
     const pauseSpy = jest.spyOn(IRobotMqtt.prototype, 'pause').mockResolvedValue();
     const goHomeSpy = jest.spyOn(IRobotMqtt.prototype, 'goHome').mockResolvedValue();
     const addCommandHandlerSpy = jest.spyOn(RoboticVacuumCleaner.prototype, 'addCommandHandler');
-    const subscribeAttributeSpy = jest.spyOn(RoboticVacuumCleaner.prototype, 'subscribeAttribute').mockResolvedValue(true);
+    const subscribeAttributeSpy = jest.spyOn(RoboticVacuumCleaner.prototype, 'subscribeAttribute');
     const getAttributeSpy = jest.spyOn(RoboticVacuumCleaner.prototype, 'getAttribute').mockImplementation((_cluster, attribute) => {
       if (attribute === 'supportedModes') {
         if ((_cluster as unknown) === RvcCleanMode.Complete) {
@@ -470,7 +470,7 @@ describe('TestPlatform', () => {
     const pauseSpy = jest.spyOn(IRobotMqtt.prototype, 'pause').mockResolvedValue();
     const goHomeSpy = jest.spyOn(IRobotMqtt.prototype, 'goHome').mockResolvedValue();
     const addCommandHandlerSpy = jest.spyOn(RoboticVacuumCleaner.prototype, 'addCommandHandler');
-    const subscribeAttributeSpy = jest.spyOn(RoboticVacuumCleaner.prototype, 'subscribeAttribute').mockResolvedValue(true);
+    const subscribeAttributeSpy = jest.spyOn(RoboticVacuumCleaner.prototype, 'subscribeAttribute');
     const getAttributeSpy = jest.spyOn(RoboticVacuumCleaner.prototype, 'getAttribute').mockImplementation((_cluster, attribute) => {
       if (attribute === 'supportedModes') {
         if ((_cluster as unknown) === RvcCleanMode.Complete) {
