@@ -28,6 +28,7 @@ import { BasePlatformConfig, MatterbridgeDynamicPlatform, PlatformMatterbridge }
 import { RoboticVacuumCleaner } from 'matterbridge/devices';
 import { AnsiLogger, rs } from 'matterbridge/logger';
 import { LogLevel } from 'matterbridge/logger';
+import { PowerSourceBehavior } from 'matterbridge/matter/behaviors';
 import { PowerSource, RvcCleanMode, RvcOperationalState, RvcRunMode, ServiceArea } from 'matterbridge/matter/clusters';
 import { isValidNumber, isValidObject, isValidString } from 'matterbridge/utils';
 
@@ -79,8 +80,8 @@ export class Platform extends MatterbridgeDynamicPlatform {
     super(matterbridge, log, config);
 
     // Verify that Matterbridge is the correct version
-    if (typeof this.verifyMatterbridgeVersion !== 'function' || !this.verifyMatterbridgeVersion('3.7.3')) {
-      throw new Error(`This plugin requires Matterbridge version >= "3.7.3". Please update Matterbridge to the latest version in the frontend.`);
+    if (typeof this.verifyMatterbridgeVersion !== 'function' || !this.verifyMatterbridgeVersion('3.8.0')) {
+      throw new Error(`This plugin requires Matterbridge version >= "3.8.0". Please update Matterbridge to the latest version in the frontend.`);
     }
 
     // Set default values for configuration properties for old setups that might not have these properties.
@@ -272,11 +273,11 @@ export class Platform extends MatterbridgeDynamicPlatform {
         rvc.log.logFilePath = path.join(this.matterbridge.matterbridgePluginDirectory, this.config.name, device.name.toLowerCase().replaceAll(' ', '-') + '.log');
       }
       // We assume the robot is docked and the battery is user replaceble and fully charged until we can get battery info.
-      await rvc.setAttribute(PowerSource.Cluster.with(PowerSource.Feature.Battery), 'batChargeLevel', PowerSource.BatChargeLevel.Ok); // Set to Ok since we don't have battery info yet.
-      await rvc.setAttribute(PowerSource.Cluster.with(PowerSource.Feature.Battery, PowerSource.Feature.Rechargeable), 'batChargeState', PowerSource.BatChargeState.IsAtFullCharge); // Set to IsAtFullCharge since we don't have battery info yet.
-      await rvc.setAttribute(PowerSource.Cluster.with(PowerSource.Feature.Battery), 'batReplaceability', PowerSource.BatReplaceability.UserReplaceable); // Set to UserReplaceable since we don't have battery info yet.
-      await rvc.setAttribute(PowerSource.Cluster.with(PowerSource.Feature.Battery), 'batPercentRemaining', 200); // Set to 200 since we don't have battery info yet.
-      await rvc.setAttribute(PowerSource.Cluster.with(PowerSource.Feature.Battery), 'batVoltage', null); // Set to null since we don't have battery info yet.
+      await rvc.setAttribute(PowerSourceBehavior.with(PowerSource.Feature.Battery), 'batChargeLevel', PowerSource.BatChargeLevel.Ok); // Set to Ok since we don't have battery info yet.
+      await rvc.setAttribute(PowerSourceBehavior.with(PowerSource.Feature.Battery, PowerSource.Feature.Rechargeable), 'batChargeState', PowerSource.BatChargeState.IsAtFullCharge); // Set to IsAtFullCharge since we don't have battery info yet.
+      await rvc.setAttribute(PowerSourceBehavior.with(PowerSource.Feature.Battery), 'batReplaceability', PowerSource.BatReplaceability.UserReplaceable); // Set to UserReplaceable since we don't have battery info yet.
+      await rvc.setAttribute(PowerSourceBehavior.with(PowerSource.Feature.Battery), 'batPercentRemaining', 200); // Set to 200 since we don't have battery info yet.
+      await rvc.setAttribute(PowerSourceBehavior.with(PowerSource.Feature.Battery), 'batVoltage', null); // Set to null since we don't have battery info yet.
 
       const robotMqtt = new IRobotMqtt({
         ip: device.ip,
@@ -287,19 +288,20 @@ export class Platform extends MatterbridgeDynamicPlatform {
       });
 
       // Subscribe to changes in the RvcOperationalState.
-      await rvc.subscribeAttribute(RvcOperationalState.Complete, 'currentPhase', (newPhase) => {
-        const phaseList = rvc.getAttribute(RvcOperationalState.Complete, 'phaseList');
+      // TODO: remove after subscribeAttribute transition from async to sync
+      void rvc.subscribeAttribute(RvcOperationalState, 'currentPhase', (newPhase) => {
+        const phaseList = rvc.getAttribute(RvcOperationalState, 'phaseList');
         if (!newPhase || !phaseList) return;
         rvc.log.notice(`Current Phase changed to ${newPhase} >>> ${phaseList[newPhase]}`);
       });
 
-      await rvc.subscribeAttribute(RvcOperationalState.Complete, 'operationalState', (newState) => {
+      void rvc.subscribeAttribute(RvcOperationalState, 'operationalState', (newState) => {
         rvc.log.notice(`Operational State changed to ${newState}`);
       });
 
       // Map Matter's Robotic Vacuum commands to iRobot local MQTT commands.
       rvc.addCommandHandler('RvcRunMode.changeToMode', async ({ request }) => {
-        const selectedMode = rvc.getAttribute(RvcRunMode.Complete, 'supportedModes')?.find((s) => s.mode === request.newMode);
+        const selectedMode = rvc.getAttribute(RvcRunMode, 'supportedModes')?.find((s) => s.mode === request.newMode);
         if (selectedMode?.modeTags?.some((tag) => tag.value === RvcRunMode.ModeTag.Cleaning)) {
           rvc.log.notice(`Run Mode changed to ${selectedMode.label}: starting cleaning cycle`);
           await robotMqtt.clean();
@@ -310,7 +312,7 @@ export class Platform extends MatterbridgeDynamicPlatform {
       });
 
       rvc.addCommandHandler('RvcCleanMode.changeToMode', ({ request }) => {
-        const selectedMode = rvc.getAttribute(RvcCleanMode.Complete, 'supportedModes')?.find((s) => s.mode === request.newMode);
+        const selectedMode = rvc.getAttribute(RvcCleanMode, 'supportedModes')?.find((s) => s.mode === request.newMode);
         rvc.log.notice(`Clean Mode changed to ${selectedMode?.label ?? 'unknown'}`);
       });
 
@@ -368,7 +370,7 @@ export class Platform extends MatterbridgeDynamicPlatform {
 
   async parseMqttMessage(rvc: RoboticVacuumCleaner, msg: IRobotMqttMessageReport): Promise<void> {
     if (isValidNumber(msg.state?.reported?.batPct, 1, 100)) {
-      await rvc.setAttribute(PowerSource.Cluster.with(PowerSource.Feature.Battery), 'batPercentRemaining', msg.state.reported.batPct * 2, rvc.log); // iRobot reports battery percentage as 1-100, but Matter expects 1-200, so we multiply by 2.
+      await rvc.setAttribute(PowerSourceBehavior.with(PowerSource.Feature.Battery), 'batPercentRemaining', msg.state.reported.batPct * 2, rvc.log); // iRobot reports battery percentage as 1-100, but Matter expects 1-200, so we multiply by 2.
     }
     if (isValidObject(msg.state?.reported?.cleanMissionStatus, 5)) {
       const status = msg.state.reported.cleanMissionStatus;
@@ -377,35 +379,35 @@ export class Platform extends MatterbridgeDynamicPlatform {
       );
       if (status.cycle === 'none') {
         if (status.phase === 'charge') {
-          await rvc.setAttribute(RvcOperationalState.Complete, 'operationalState', RvcOperationalState.OperationalState.Docked, rvc.log);
+          await rvc.setAttribute(RvcOperationalState, 'operationalState', RvcOperationalState.OperationalState.Docked, rvc.log);
         } else {
-          await rvc.setAttribute(RvcOperationalState.Complete, 'operationalState', RvcOperationalState.OperationalState.Stopped, rvc.log);
+          await rvc.setAttribute(RvcOperationalState, 'operationalState', RvcOperationalState.OperationalState.Stopped, rvc.log);
         }
       }
       if (status.phase === 'charge') {
-        await rvc.setAttribute(RvcOperationalState.Complete, 'currentPhase', 0, rvc.log);
+        await rvc.setAttribute(RvcOperationalState, 'currentPhase', 0, rvc.log);
         await rvc.setAttribute(
-          PowerSource.Cluster.with(PowerSource.Feature.Battery, PowerSource.Feature.Rechargeable),
+          PowerSourceBehavior.with(PowerSource.Feature.Battery, PowerSource.Feature.Rechargeable),
           'batChargeState',
           PowerSource.BatChargeState.IsCharging,
           rvc.log,
         );
       } else {
         await rvc.setAttribute(
-          PowerSource.Cluster.with(PowerSource.Feature.Battery, PowerSource.Feature.Rechargeable),
+          PowerSourceBehavior.with(PowerSource.Feature.Battery, PowerSource.Feature.Rechargeable),
           'batChargeState',
           PowerSource.BatChargeState.IsNotCharging,
           rvc.log,
         );
       }
       if (status.phase === 'run') {
-        await rvc.setAttribute(RvcOperationalState.Complete, 'currentPhase', 1, rvc.log);
+        await rvc.setAttribute(RvcOperationalState, 'currentPhase', 1, rvc.log);
       }
       if (status.phase === 'stop') {
-        await rvc.setAttribute(RvcOperationalState.Complete, 'currentPhase', 2, rvc.log);
+        await rvc.setAttribute(RvcOperationalState, 'currentPhase', 2, rvc.log);
       }
       if (status.phase === 'hmUsrDock') {
-        await rvc.setAttribute(RvcOperationalState.Complete, 'currentPhase', 3, rvc.log);
+        await rvc.setAttribute(RvcOperationalState, 'currentPhase', 3, rvc.log);
       }
     }
   }

@@ -92,12 +92,9 @@ describe('TestPlatform', () => {
   });
 
   it('should throw error in load when version is not valid', () => {
-    const savedVersion = matterbridge.matterbridgeVersion;
-    matterbridge.matterbridgeVersion = '1.5.0';
-    expect(() => new Platform(matterbridge, log, config)).toThrow(
-      'This plugin requires Matterbridge version >= "3.7.3". Please update Matterbridge to the latest version in the frontend.',
+    expect(() => new Platform({ ...matterbridge, matterbridgeVersion: '1.5.0' }, log, config)).toThrow(
+      'This plugin requires Matterbridge version >= "3.8.0". Please update Matterbridge to the latest version in the frontend.',
     );
-    matterbridge.matterbridgeVersion = savedVersion;
   });
 
   it('should create platform instance', async () => {
@@ -346,7 +343,7 @@ describe('TestPlatform', () => {
     const pauseSpy = jest.spyOn(IRobotMqtt.prototype, 'pause').mockResolvedValue();
     const goHomeSpy = jest.spyOn(IRobotMqtt.prototype, 'goHome').mockResolvedValue();
     const addCommandHandlerSpy = jest.spyOn(RoboticVacuumCleaner.prototype, 'addCommandHandler');
-    const subscribeAttributeSpy = jest.spyOn(RoboticVacuumCleaner.prototype, 'subscribeAttribute').mockResolvedValue(true);
+    const subscribeAttributeSpy = jest.spyOn(RoboticVacuumCleaner.prototype, 'subscribeAttribute');
     const getAttributeSpy = jest.spyOn(RoboticVacuumCleaner.prototype, 'getAttribute').mockImplementation((_cluster, attribute) => {
       if (attribute === 'supportedModes') {
         if ((_cluster as unknown) === RvcCleanMode.Complete) {
@@ -470,7 +467,7 @@ describe('TestPlatform', () => {
     const pauseSpy = jest.spyOn(IRobotMqtt.prototype, 'pause').mockResolvedValue();
     const goHomeSpy = jest.spyOn(IRobotMqtt.prototype, 'goHome').mockResolvedValue();
     const addCommandHandlerSpy = jest.spyOn(RoboticVacuumCleaner.prototype, 'addCommandHandler');
-    const subscribeAttributeSpy = jest.spyOn(RoboticVacuumCleaner.prototype, 'subscribeAttribute').mockResolvedValue(true);
+    const subscribeAttributeSpy = jest.spyOn(RoboticVacuumCleaner.prototype, 'subscribeAttribute');
     const getAttributeSpy = jest.spyOn(RoboticVacuumCleaner.prototype, 'getAttribute').mockImplementation((_cluster, attribute) => {
       if (attribute === 'supportedModes') {
         if ((_cluster as unknown) === RvcCleanMode.Complete) {
