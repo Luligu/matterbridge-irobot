@@ -20,6 +20,9 @@
  * limitations under the License.
  */
 
+// TODO: remove after subscribeAttribute transition from async to sync
+/* eslint-disable @typescript-eslint/no-floating-promises */
+
 import { mkdirSync } from 'node:fs';
 import path from 'node:path';
 import { inspect } from 'node:util';
@@ -289,7 +292,6 @@ export class Platform extends MatterbridgeDynamicPlatform {
 
       // Subscribe to changes in the RvcOperationalState.
       // TODO: remove after subscribeAttribute transition from async to sync
-      // eslint-disable
       rvc.subscribeAttribute(RvcOperationalState, 'currentPhase', (newPhase) => {
         const phaseList = rvc.getAttribute(RvcOperationalState, 'phaseList');
         if (!newPhase || !phaseList) return;
@@ -299,7 +301,6 @@ export class Platform extends MatterbridgeDynamicPlatform {
       rvc.subscribeAttribute(RvcOperationalState, 'operationalState', (newState) => {
         rvc.log.notice(`Operational State changed to ${newState}`);
       });
-      // eslint-enable
 
       // Map Matter's Robotic Vacuum commands to iRobot local MQTT commands.
       rvc.addCommandHandler('RvcRunMode.changeToMode', async ({ request }) => {
