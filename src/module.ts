@@ -20,9 +20,6 @@
  * limitations under the License.
  */
 
-// TODO: remove after subscribeAttribute transition from async to sync
-/* eslint-disable @typescript-eslint/no-floating-promises */
-
 import { mkdirSync } from 'node:fs';
 import path from 'node:path';
 import { inspect } from 'node:util';
@@ -292,13 +289,13 @@ export class Platform extends MatterbridgeDynamicPlatform {
 
       // Subscribe to changes in the RvcOperationalState.
       // TODO: remove after subscribeAttribute transition from async to sync
-      rvc.subscribeAttribute(RvcOperationalState, 'currentPhase', (newPhase) => {
+      void rvc.subscribeAttribute(RvcOperationalState, 'currentPhase', (newPhase) => {
         const phaseList = rvc.getAttribute(RvcOperationalState, 'phaseList');
         if (!newPhase || !phaseList) return;
         rvc.log.notice(`Current Phase changed to ${newPhase} >>> ${phaseList[newPhase]}`);
       });
 
-      rvc.subscribeAttribute(RvcOperationalState, 'operationalState', (newState) => {
+      void rvc.subscribeAttribute(RvcOperationalState, 'operationalState', (newState) => {
         rvc.log.notice(`Operational State changed to ${newState}`);
       });
 
