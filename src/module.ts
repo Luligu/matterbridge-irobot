@@ -288,17 +288,18 @@ export class Platform extends MatterbridgeDynamicPlatform {
       });
 
       // Subscribe to changes in the RvcOperationalState.
-      // eslint-disable-next-line
+      // TODO: remove after subscribeAttribute transition from async to sync
+      // eslint-disable
       rvc.subscribeAttribute(RvcOperationalState, 'currentPhase', (newPhase) => {
         const phaseList = rvc.getAttribute(RvcOperationalState, 'phaseList');
         if (!newPhase || !phaseList) return;
         rvc.log.notice(`Current Phase changed to ${newPhase} >>> ${phaseList[newPhase]}`);
       });
 
-      // eslint-disable-next-line
       rvc.subscribeAttribute(RvcOperationalState, 'operationalState', (newState) => {
         rvc.log.notice(`Operational State changed to ${newState}`);
       });
+      // eslint-enable
 
       // Map Matter's Robotic Vacuum commands to iRobot local MQTT commands.
       rvc.addCommandHandler('RvcRunMode.changeToMode', async ({ request }) => {
