@@ -1,9 +1,9 @@
 const NAME = 'IRobotCredentials';
 
-import { afterAll, beforeEach, describe, expect, it, jest } from '@jest/globals';
-import { setupTest } from 'matterbridge/jestutils';
+import { setupTest } from 'matterbridge/vitest-utils';
+import type { MockedFunction } from 'vitest';
 
-import { IRobotCredentials, type IRobotCredentialsConfig, type IRobotEndpoints } from './iRobotGetCredentials.js';
+import { IRobotCredentials, type IRobotCredentialsConfig, type IRobotEndpoints } from '../src/iRobotGetCredentials.js';
 
 await setupTest(NAME, false);
 
@@ -41,8 +41,8 @@ function createJsonResponse(status: number, body: unknown): TestFetchResponse {
   } as TestFetchResponse;
 }
 
-function createFetchMock(...responses: Array<{ status: number; body: unknown }>): jest.MockedFunction<typeof fetch> {
-  const fetchMock = jest.fn() as unknown as jest.MockedFunction<typeof fetch>;
+function createFetchMock(...responses: Array<{ status: number; body: unknown }>): MockedFunction<typeof fetch> {
+  const fetchMock = vi.fn() as unknown as MockedFunction<typeof fetch>;
   for (const response of responses) {
     fetchMock.mockResolvedValueOnce(createJsonResponse(response.status, response.body));
   }
@@ -51,7 +51,7 @@ function createFetchMock(...responses: Array<{ status: number; body: unknown }>)
 
 describe('IRobotCredentials', () => {
   beforeEach(() => {
-    jest.restoreAllMocks();
+    vi.restoreAllMocks();
     process.env = { ...originalEnv };
   });
 
@@ -191,7 +191,7 @@ describe('IRobotCredentials', () => {
     await expect(credentials.getEndpoints()).rejects.toThrow('Fatal error discovering iRobot endpoints. No Gigya API key in discovery response.');
   });
 
-  it.each([
+  it.each<[number, string]>([
     [401, 'Authentication error. Check your credentials.'],
     [403, 'Authentication error. Check your credentials.'],
     [400, 'Error login into Gigya API.'],
@@ -209,7 +209,7 @@ describe('IRobotCredentials', () => {
     ).rejects.toThrow(message);
   });
 
-  it.each([
+  it.each<[Record<string, unknown>, string]>([
     [{ statusCode: 403 }, 'Authentication error. Please check your credentials.'],
     [{ statusCode: 400 }, 'Error login into Gigya API.'],
     [{ statusCode: 200, errorCode: 0, UID: 'uid-only' }, 'Error login into iRobot account. Missing fields in login response.'],
@@ -316,7 +316,7 @@ describe('IRobotCredentials', () => {
       }),
     );
 
-    const secondCallBody = JSON.parse(String(fetchMock.mock.calls[1]?.[1]?.body));
+    const secondCallBody = JSON.parse(fetchMock.mock.calls[1]?.[1]?.body as string);
     expect(secondCallBody).toEqual({
       app_id: 'ANDROID-C7FB240E-DF34-42D7-AE4E-A8C17079A294',
       assume_robot_ownership: 0,

@@ -208,6 +208,7 @@ export class IRobotDiscovery {
 
       socket.on('message', (msg, rinfo) => {
         try {
+          // oxlint-disable-next-line typescript/no-unsafe-type-assertion
           const parsed = JSON.parse(msg.toString()) as IRobotDiscoveryInfo;
           const prefix = parsed.hostname?.split('-')[0];
           if ((prefix === 'Roomba' || prefix === 'iRobot') && parsed.ip) {
@@ -261,6 +262,7 @@ export class IRobotDiscovery {
 
       socket.on('message', (msg, rinfo) => {
         try {
+          // oxlint-disable-next-line typescript/no-unsafe-type-assertion
           const parsedMsg = JSON.parse(msg.toString()) as IRobotDiscoveryInfo;
           this.log.debug(`Received discovery response from ${robotIP}:`, parsedMsg);
           if (parsedMsg.hostname && parsedMsg.ip && (parsedMsg.hostname.split('-')[0] === 'Roomba' || parsedMsg.hostname.split('-')[0] === 'iRobot')) {

@@ -1,17 +1,12 @@
-const MATTER_PORT = 0;
 const NAME = 'IRobotMqtt';
-const HOMEDIR = path.join('jest', NAME);
-const CREATE_ONLY = true;
 
 import { EventEmitter } from 'node:events';
-import path from 'node:path';
 import { inspect } from 'node:util';
 
-import { afterEach, describe, expect, it, jest } from '@jest/globals';
-import { setupTest } from 'matterbridge/jestutils';
+import { setupTest } from 'matterbridge/vitest-utils';
 import type { IClientOptions } from 'mqtt';
 
-import { IRobotMqtt } from './iRobotMqtt.js';
+import { IRobotMqtt } from '../src/iRobotMqtt.js';
 
 await setupTest(NAME, false);
 
@@ -55,31 +50,31 @@ class FakeMqttClient extends EventEmitter {
   publishImpl: (topic: string, payload: string, options: unknown, callback: (error?: Error | null) => void) => void = (_topic, _payload, _options, callback) => callback(null);
   endImpl: (force: boolean, opts: unknown, callback: (error?: Error) => void) => void = (_force, _opts, callback) => callback();
 
-  subscribe = jest.fn((topics: string[] | string, options: unknown, callback: (error?: Error | null) => void) => {
+  subscribe = vi.fn((topics: string[] | string, options: unknown, callback: (error?: Error | null) => void) => {
     this.subscribeImpl(topics, options, callback);
   });
 
-  publish = jest.fn((topic: string, payload: string, options: unknown, callback: (error?: Error | null) => void) => {
+  publish = vi.fn((topic: string, payload: string, options: unknown, callback: (error?: Error | null) => void) => {
     this.publishImpl(topic, payload, options, callback);
   });
 
-  end = jest.fn((force: boolean, opts: unknown, callback: (error?: Error) => void) => {
+  end = vi.fn((force: boolean, opts: unknown, callback: (error?: Error) => void) => {
     this.connected = false;
     this.endImpl(force, opts, callback);
   });
 }
 
 const logger = {
-  debug: jest.fn(),
-  info: jest.fn(),
-  warn: jest.fn(),
-  error: jest.fn(),
+  debug: vi.fn(),
+  info: vi.fn(),
+  warn: vi.fn(),
+  error: vi.fn(),
 };
 
 afterEach(() => {
-  jest.useRealTimers();
-  jest.restoreAllMocks();
-  jest.clearAllMocks();
+  vi.useRealTimers();
+  vi.restoreAllMocks();
+  vi.clearAllMocks();
 });
 
 describe('IRobotMqtt', () => {
@@ -91,7 +86,7 @@ describe('IRobotMqtt', () => {
   });
 
   it('constructor treats missing fields as unconfigured', () => {
-    const connectFn = jest.fn();
+    const connectFn = vi.fn();
 
     const missingIp = new IRobotMqtt({ ip: '', blid: 'B', password: 'P', logger: logger as any }, connectFn as any);
     const missingBlid = new IRobotMqtt({ ip: '1.2.3.4', blid: '', password: 'P', logger: logger as any }, connectFn as any);
@@ -103,7 +98,7 @@ describe('IRobotMqtt', () => {
   });
 
   it('connect() returns early when credentials are missing', async () => {
-    const connectFn = jest.fn();
+    const connectFn = vi.fn();
     const client = new IRobotMqtt({ ip: '192.168.1.2', blid: '', password: '', logger: logger as any }, connectFn as any);
 
     await expect(client.connect()).resolves.toBeUndefined();
@@ -115,7 +110,7 @@ describe('IRobotMqtt', () => {
   it('connect() subscribes and resolves on connect event', async () => {
     const fake = new FakeMqttClient();
 
-    const connectFn = jest.fn<(_url: string, _options: IClientOptions) => FakeMqttClient>((_url: string, _options: IClientOptions) => {
+    const connectFn = vi.fn<(_url: string, _options: IClientOptions) => FakeMqttClient>((_url: string, _options: IClientOptions) => {
       // Simulate async connection establishment.
       queueMicrotask(() => {
         fake.connected = true;
@@ -145,7 +140,7 @@ describe('IRobotMqtt', () => {
     const fake = new FakeMqttClient();
     fake.connected = true;
 
-    const connectFn = jest.fn((_url: string, _options: IClientOptions) => fake as any);
+    const connectFn = vi.fn((_url: string, _options: IClientOptions) => fake as any);
     const client = new IRobotMqtt({ ip: '192.168.1.2', blid: 'BLID', password: 'PASSWORD', logger: logger as any }, connectFn as any);
 
     // @ts-expect-error - internal test setup
@@ -161,9 +156,9 @@ describe('IRobotMqtt', () => {
 
   it('connect() logs subscribe failure but still resolves', async () => {
     const fake = new FakeMqttClient();
-    fake.subscribeImpl = (_topics, _options, callback) => callback(new Error('sub fail'));
+    fake.subscribeImpl = (_topics, _options, callback): void => callback(new Error('sub fail'));
 
-    const connectFn = jest.fn((_url: string, _options: IClientOptions) => {
+    const connectFn = vi.fn((_url: string, _options: IClientOptions) => {
       queueMicrotask(() => {
         fake.connected = true;
         fake.emit('connect');
@@ -191,7 +186,7 @@ describe('IRobotMqtt', () => {
     const fake = new FakeMqttClient();
     const authError = new Error('Bad username or password');
 
-    const connectFn = jest.fn<(_url: string, _options: IClientOptions) => FakeMqttClient>((_url: string, _options: IClientOptions) => {
+    const connectFn = vi.fn<(_url: string, _options: IClientOptions) => FakeMqttClient>((_url: string, _options: IClientOptions) => {
       queueMicrotask(() => {
         fake.emit('error', authError);
       });
@@ -215,7 +210,7 @@ describe('IRobotMqtt', () => {
     const fake = new FakeMqttClient();
     const err = new Error('boom');
 
-    const connectFn = jest.fn((_url: string, _options: IClientOptions) => {
+    const connectFn = vi.fn((_url: string, _options: IClientOptions) => {
       queueMicrotask(() => {
         fake.emit('error', err);
       });
@@ -223,7 +218,7 @@ describe('IRobotMqtt', () => {
     });
 
     const client = new IRobotMqtt({ ip: '192.168.1.2', blid: 'BLID', password: 'PASSWORD', logger: logger as any }, connectFn as any);
-    const onError = jest.fn();
+    const onError = vi.fn();
     client.on('error', onError);
 
     await expect(client.connect()).rejects.toBe(err);
@@ -233,7 +228,7 @@ describe('IRobotMqtt', () => {
   it('connect() emits reconnect/close and parses messages', async () => {
     const fake = new FakeMqttClient();
 
-    const connectFn = jest.fn<(_url: string, _options: IClientOptions) => FakeMqttClient>((_url: string, _options: IClientOptions) => {
+    const connectFn = vi.fn<(_url: string, _options: IClientOptions) => FakeMqttClient>((_url: string, _options: IClientOptions) => {
       queueMicrotask(() => {
         fake.connected = true;
         fake.emit('connect');
@@ -243,10 +238,10 @@ describe('IRobotMqtt', () => {
 
     const client = new IRobotMqtt({ ip: '192.168.1.2', blid: 'BLID', password: 'PASSWORD', logger: logger as any }, connectFn as any);
 
-    const reconnectSpy = jest.fn();
-    const closeSpy = jest.fn();
+    const reconnectSpy = vi.fn();
+    const closeSpy = vi.fn();
     type MessageEvent = { topic: string; payload: Buffer; json?: unknown };
-    const messageSpy = jest.fn<(message: MessageEvent) => void>();
+    const messageSpy = vi.fn<(message: MessageEvent) => void>();
     client.on('reconnect', reconnectSpy);
     client.on('close', closeSpy);
     client.on('message', messageSpy);
@@ -272,14 +267,14 @@ describe('IRobotMqtt', () => {
   });
 
   it('connect() rejects on connect timeout', async () => {
-    jest.useFakeTimers();
+    vi.useFakeTimers();
     const fake = new FakeMqttClient();
-    const connectFn = jest.fn((_url: string, _options: IClientOptions) => fake as any);
+    const connectFn = vi.fn((_url: string, _options: IClientOptions) => fake as any);
 
     const client = new IRobotMqtt({ ip: '192.168.1.2', blid: 'BLID', password: 'PASSWORD', connectTimeoutMs: 25, logger: logger as any }, connectFn as any);
 
     const promise = client.connect();
-    await Promise.all([expect(promise).rejects.toThrow('IRobotMqtt connect timeout after 25ms'), jest.advanceTimersByTimeAsync(25)]);
+    await Promise.all([expect(promise).rejects.toThrow('IRobotMqtt connect timeout after 25ms'), vi.advanceTimersByTimeAsync(25)]);
   });
 
   it('subscribe() throws when not connected, and propagates subscribe errors', async () => {
@@ -288,7 +283,7 @@ describe('IRobotMqtt', () => {
 
     await expect(client.subscribe('#')).rejects.toThrow('IRobotMqtt: not connected');
 
-    fake.subscribeImpl = (_topics, _options, callback) => callback(new Error('sub error'));
+    fake.subscribeImpl = (_topics, _options, callback): void => callback(new Error('sub error'));
     // @ts-expect-error - internal test setup
     client.client = fake;
     await expect(client.subscribe('topic')).rejects.toThrow('sub error');
@@ -298,7 +293,7 @@ describe('IRobotMqtt', () => {
     const fake = new FakeMqttClient();
     fake.connected = true;
 
-    const connectFn = jest.fn((_url: string, _options: IClientOptions) => fake as unknown as any);
+    const connectFn = vi.fn((_url: string, _options: IClientOptions) => fake as unknown as any);
     const client = new IRobotMqtt(
       {
         ip: '192.168.1.2',
@@ -320,7 +315,7 @@ describe('IRobotMqtt', () => {
   it('disconnect() defaults force=false when omitted', async () => {
     const fake = new FakeMqttClient();
     fake.connected = true;
-    const connectFn = jest.fn((_url: string, _options: IClientOptions) => fake as unknown as any);
+    const connectFn = vi.fn((_url: string, _options: IClientOptions) => fake as unknown as any);
     const client = new IRobotMqtt({ ip: '192.168.1.2', blid: 'BLID', password: 'PASSWORD', logger: logger as any }, connectFn as any);
 
     // @ts-expect-error - set internal client for testing disconnect without needing to run connect()
@@ -332,7 +327,7 @@ describe('IRobotMqtt', () => {
 
   it('disconnect() returns when not connected and logs end() errors', async () => {
     const fake = new FakeMqttClient();
-    fake.endImpl = (_force, _opts, callback) => callback(new Error('end fail'));
+    fake.endImpl = (_force, _opts, callback): void => callback(new Error('end fail'));
 
     const client = new IRobotMqtt({ ip: '192.168.1.2', blid: 'BLID', password: 'PASSWORD', logger: logger as any }, (() => fake) as any);
 
@@ -345,7 +340,7 @@ describe('IRobotMqtt', () => {
   });
 
   it('publishCommand() validates connection and handles publish success/error/timeout', async () => {
-    jest.useFakeTimers();
+    vi.useFakeTimers();
 
     const fake = new FakeMqttClient();
     const client = new IRobotMqtt(
@@ -378,15 +373,15 @@ describe('IRobotMqtt', () => {
     expect(logger.debug).toHaveBeenCalledWith('IRobotMqtt published start to cmd');
 
     // error
-    fake.publishImpl = (_topic, _payload, _options, callback) => callback(new Error('pub fail'));
+    fake.publishImpl = (_topic, _payload, _options, callback): void => callback(new Error('pub fail'));
     await expect(client.publishCommand('stop')).rejects.toThrow('pub fail');
 
     // timeout
-    fake.publishImpl = () => {
+    fake.publishImpl = (): void => {
       // never calls callback
     };
     const timeoutPromise = client.publishCommand('dock');
-    await Promise.all([expect(timeoutPromise).rejects.toThrow('IRobotMqtt publish timeout after 20ms (dock)'), jest.advanceTimersByTimeAsync(20)]);
+    await Promise.all([expect(timeoutPromise).rejects.toThrow('IRobotMqtt publish timeout after 20ms (dock)'), vi.advanceTimersByTimeAsync(20)]);
   });
 
   it('publishCommand() returns early when credentials are missing', async () => {
@@ -400,7 +395,7 @@ describe('IRobotMqtt', () => {
   it('command helpers call publishCommand', async () => {
     const fake = new FakeMqttClient();
     const client = new IRobotMqtt({ ip: '192.168.1.2', blid: 'BLID', password: 'PASSWORD', logger: logger as any }, (() => fake) as any);
-    const spy = jest.spyOn(client, 'publishCommand').mockResolvedValue();
+    const spy = vi.spyOn(client, 'publishCommand').mockResolvedValue();
 
     await client.start();
     await client.clean();
@@ -415,6 +410,7 @@ describe('IRobotMqtt', () => {
 
 describe('IRobotMqtt internal helpers', () => {
   it('parseOptionalRegex handles empty, plain, and /pattern/flags forms', () => {
+    // oxlint-disable-next-line unicorn/no-useless-undefined -- explicitly testing the undefined input branch
     expect(__testUtils.parseOptionalRegex(undefined)).toBeUndefined();
     expect(__testUtils.parseOptionalRegex('   ')).toBeUndefined();
 

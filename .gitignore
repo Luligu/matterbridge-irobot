@@ -19,5 +19,3 @@ temp/
 *.log
 
 # Package specific directories and files that should be ignored
-
-iRobotLocal.ts

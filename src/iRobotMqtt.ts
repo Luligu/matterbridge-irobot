@@ -22,7 +22,7 @@
 
 import { EventEmitter } from 'node:events';
 
-import { AnsiLogger } from 'matterbridge/logger';
+import type { AnsiLogger } from 'matterbridge/logger';
 import { isValidString } from 'matterbridge/utils';
 import { connect, type IClientOptions, type MqttClient } from 'mqtt';
 
@@ -172,7 +172,7 @@ export class IRobotMqtt extends EventEmitter {
     this.client.on('connect', () => {
       this.config.logger?.info(`IRobotMqtt connected to ${this.config.ip}`);
       this.emit('connect');
-      void (async () => {
+      void (async (): Promise<void> => {
         try {
           await this.subscribe(this.config.subscribeTopics);
         } catch (error) {
@@ -211,24 +211,31 @@ export class IRobotMqtt extends EventEmitter {
     });
 
     await new Promise<void>((resolve, reject) => {
-      const timeoutId = setTimeout(() => {
-        cleanup();
-        reject(new Error(`IRobotMqtt connect timeout after ${this.config.connectTimeoutMs}ms`));
-      }, this.config.connectTimeoutMs);
+      let timeoutId: NodeJS.Timeout;
 
-      const onConnect = () => {
+      const onConnect = (): void => {
+        // oxlint-disable-next-line no-use-before-define
         cleanup();
         resolve();
       };
-      const onError = (error: unknown) => {
+
+      const onError = (error: unknown): void => {
+        // oxlint-disable-next-line no-use-before-define
         cleanup();
         reject(error);
       };
-      const cleanup = () => {
+
+      const cleanup = (): void => {
         clearTimeout(timeoutId);
         this.client?.off('connect', onConnect);
         this.client?.off('error', onError);
       };
+
+      timeoutId = setTimeout(() => {
+        cleanup();
+        reject(new Error(`IRobotMqtt connect timeout after ${this.config.connectTimeoutMs}ms`));
+      }, this.config.connectTimeoutMs);
+
       this.client?.once('connect', onConnect);
       this.client?.once('error', onError);
     });
@@ -289,7 +296,7 @@ export class IRobotMqtt extends EventEmitter {
     if (!this.client) throw new Error('IRobotMqtt: not connected');
     // Many robots expect the standard cmd schema: { command, time, initiator, ... }.
     // Some firmwares will reject commands without these fields (e.g. MESSAGE_NOT_SECURE).
-    const payload = JSON.stringify({ command, time: (Date.now() / 1000) | 0, initiator: 'localApp', ...(parameters ?? {}) });
+    const payload = JSON.stringify({ command, time: Math.floor(Date.now() / 1000), initiator: 'localApp', ...parameters });
     await new Promise<void>((resolve, reject) => {
       const timeoutId = setTimeout(() => {
         reject(new Error(`IRobotMqtt publish timeout after ${this.config.publishTimeoutMs}ms (${command})`));

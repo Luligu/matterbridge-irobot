@@ -234,16 +234,18 @@ export class IRobotCredentials {
     return body;
   }
 
+  // oxlint-disable-next-line typescript/no-unnecessary-type-parameters
   private async fetchJson<T>(input: string, init: RequestInit): Promise<{ status: number; body: T }> {
     const response = await this.fetchFn(input, init);
+    // oxlint-disable-next-line typescript/no-unsafe-type-assertion
     const body = (await response.json()) as T;
     return { status: response.status, body };
   }
 
   private pickHttpBase(deployments?: Record<string, { httpBase?: string }>): string | null {
     const keys = Object.keys(deployments ?? {})
-      .sort()
-      .reverse();
+      .toSorted()
+      .toReversed();
 
     for (const key of keys) {
       const deployment = deployments?.[key];

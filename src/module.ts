@@ -24,17 +24,16 @@ import { mkdirSync } from 'node:fs';
 import path from 'node:path';
 import { inspect } from 'node:util';
 
-import { BasePlatformConfig, MatterbridgeDynamicPlatform, PlatformMatterbridge } from 'matterbridge';
+import { type BasePlatformConfig, MatterbridgeDynamicPlatform, type PlatformMatterbridge } from 'matterbridge';
 import { RoboticVacuumCleaner } from 'matterbridge/devices';
-import { AnsiLogger, rs } from 'matterbridge/logger';
-import { LogLevel } from 'matterbridge/logger';
+import { type AnsiLogger, rs, LogLevel } from 'matterbridge/logger';
 import { PowerSourceBehavior } from 'matterbridge/matter/behaviors';
-import { PowerSource, RvcCleanMode, RvcOperationalState, RvcRunMode, ServiceArea } from 'matterbridge/matter/clusters';
-import { isValidNumber, isValidObject, isValidString } from 'matterbridge/utils';
+import { PowerSource, RvcCleanMode, RvcOperationalState, RvcRunMode, type ServiceArea } from 'matterbridge/matter/clusters';
+import { fireAndForget, getErrorMessage, isValidNumber, isValidObject, isValidString } from 'matterbridge/utils';
 
-import { IRobotDiscovery, IRobotDiscoveryInfo } from './iRobotDiscovery.js';
+import { IRobotDiscovery, type IRobotDiscoveryInfo } from './iRobotDiscovery.js';
 import { IRobotCredentials } from './iRobotGetCredentials.js';
-import { IRobotMqtt, IRobotMqttMessage, IRobotMqttMessageReport } from './iRobotMqtt.js';
+import { IRobotMqtt, type IRobotMqttMessage, type IRobotMqttMessageReport } from './iRobotMqtt.js';
 
 export interface DeviceConfig {
   name: string;
@@ -80,8 +79,8 @@ export class Platform extends MatterbridgeDynamicPlatform {
     super(matterbridge, log, config);
 
     // Verify that Matterbridge is the correct version
-    if (typeof this.verifyMatterbridgeVersion !== 'function' || !this.verifyMatterbridgeVersion('3.8.0')) {
-      throw new Error(`This plugin requires Matterbridge version >= "3.8.0". Please update Matterbridge to the latest version in the frontend.`);
+    if (typeof this.verifyMatterbridgeVersion !== 'function' || !this.verifyMatterbridgeVersion('3.9.0')) {
+      throw new Error(`This plugin requires Matterbridge version >= "3.9.0". Please update Matterbridge to the latest version in the frontend.`);
     }
 
     // Set default values for configuration properties for old setups that might not have these properties.
@@ -134,12 +133,12 @@ export class Platform extends MatterbridgeDynamicPlatform {
         await client.disconnect(true);
         this.log.info(`Disconnected MQTT client for device with IP ${ip}`);
       } catch (error) {
-        this.log.debug(`Failed to disconnect MQTT client for device with IP ${ip}. ${error}`);
+        this.log.debug(`Failed to disconnect MQTT client for device with IP ${ip}: ${getErrorMessage(error)}`);
       }
     }
     this.mqttClients.clear();
 
-    if (this.config.unregisterOnShutdown === true) await this.unregisterAllDevices();
+    if (this.config.unregisterOnShutdown) await this.unregisterAllDevices();
   }
 
   override async onAction(action: string, value?: string, id?: string, formData?: iRobotPlatformConfig): Promise<void> {
@@ -153,7 +152,9 @@ export class Platform extends MatterbridgeDynamicPlatform {
       this.log.info('Retrieving credentials from iRobot cloud...');
       this.wssSendSnackbarMessage('Retrieving credentials from iRobot cloud...', 5, 'info');
       const retrive = new IRobotCredentials({
+        // oxlint-disable-next-line typescript/no-unsafe-type-assertion typescript/non-nullable-type-assertion-style -- cause is checked below
         username: (formData?.username ?? this.config.username) as string,
+        // oxlint-disable-next-line typescript/no-unsafe-type-assertion typescript/non-nullable-type-assertion-style -- cause is checked below
         password: (formData?.password ?? this.config.password) as string,
       });
       const credentials = await retrive.getCredentials();
@@ -197,7 +198,7 @@ export class Platform extends MatterbridgeDynamicPlatform {
     try {
       discoveredDevices = await discovery.discover(timeout);
     } catch (error) {
-      this.log.error(`Failed to discover iRobot devices. ${error}`);
+      this.log.error(`Failed to discover iRobot devices: ${getErrorMessage(error)}`);
     }
     this.log.info(`Discovered ${discoveredDevices.length} iRobot devices:`);
     for (const device of discoveredDevices) {
@@ -233,7 +234,7 @@ export class Platform extends MatterbridgeDynamicPlatform {
           const robotInfo = await discovery.getRobotPublicInfo(device.ip, timeout);
           this.log.info(`Public info for device "${device.name}" with IP ${device.ip}:\n`, robotInfo);
         } catch (error) {
-          this.log.error(`Failed to get public info for device "${device.name}" with IP ${device.ip}. ${error}`);
+          this.log.error(`Failed to get public info for device "${device.name}" with IP ${device.ip}: ${getErrorMessage(error)}`);
         }
       }
       const runMode = 1; // Idle
@@ -334,9 +335,7 @@ export class Platform extends MatterbridgeDynamicPlatform {
         await robotMqtt.goHome();
       });
 
-      if (!robotMqtt.isConfigured()) {
-        this.log.warn(`Device "${device.name}" (${device.ip}) has no local MQTT credentials (blid/password); commands will be read-only.`);
-      } else {
+      if (robotMqtt.isConfigured()) {
         this.mqttClients.set(device.ip ?? device.name + '-unknown-ip', robotMqtt);
 
         try {
@@ -344,7 +343,9 @@ export class Platform extends MatterbridgeDynamicPlatform {
           // Optional: log state messages when debug is enabled.
           if (this.config.debug) {
             robotMqtt.on('message', (msg: IRobotMqttMessage) => {
-              if (msg.json !== undefined) {
+              if (msg.json === undefined) {
+                rvc.log.debug(`${rs}[mqtt] ${msg.topic}:\n${msg.payload.toString('utf8')}`);
+              } else {
                 rvc.log.debug(
                   `${rs}[mqtt] ${msg.topic}:\n${inspect(msg.json, {
                     depth: null,
@@ -355,15 +356,15 @@ export class Platform extends MatterbridgeDynamicPlatform {
                     maxStringLength: null,
                   })}`,
                 );
-                void this.parseMqttMessage(rvc, msg.json).catch(/* istanbul ignore next */ () => {});
-              } else {
-                rvc.log.debug(`${rs}[mqtt] ${msg.topic}:\n${msg.payload.toString('utf8')}`);
+                fireAndForget(this.parseMqttMessage(rvc, msg.json), this.log, `Failed to parse MQTT message for device "${device.name}" (${device.ip})`);
               }
             });
           }
         } catch (error) {
           rvc.log.error(`Failed to connect MQTT for device "${device.name}" (${device.ip}):`, error);
         }
+      } else {
+        this.log.warn(`Device "${device.name}" (${device.ip}) has no local MQTT credentials (blid/password); commands will be read-only.`);
       }
     }
   }
