@@ -1,3 +1,9 @@
+/**
+ * @file vitest/iRobotMqtt.test.ts
+ * @description This file contains the tests for the IRobotMqtt class.
+ * @author Luca Liguori
+ */
+
 const NAME = 'IRobotMqtt';
 
 import { EventEmitter } from 'node:events';

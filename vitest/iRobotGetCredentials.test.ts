@@ -1,3 +1,9 @@
+/**
+ * @file vitest/iRobotGetCredentials.test.ts
+ * @description This file contains the tests for the IRobotCredentials class.
+ * @author Luca Liguori
+ */
+
 const NAME = 'IRobotCredentials';
 
 import { setupTest } from 'matterbridge/vitest-utils';

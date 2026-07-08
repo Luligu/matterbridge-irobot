@@ -1,3 +1,9 @@
+/**
+ * @file vitest/iRobotDiscovery.test.ts
+ * @description This file contains the tests for the IRobotDiscovery class.
+ * @author Luca Liguori
+ */
+
 const NAME = 'IRobotDiscovery';
 
 import type { RemoteInfo } from 'node:dgram';

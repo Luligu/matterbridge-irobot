@@ -1,11 +1,12 @@
 /**
+ * @file src/iRobotDiscovery.ts
  * @description This file contains the class IRobotDiscovery.
- * @file src\iRobotDiscovery.ts
  * @author Luca Liguori
  * @created 2026-03-25
  * @version 1.0.0
  * @license Apache-2.0
- * @copyright 2026, 2027, 2028 Luca Liguori.
+ *
+ * Copyright 2026, 2027, 2028 Luca Liguori.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
