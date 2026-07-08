@@ -4,6 +4,8 @@
  * @author Luca Liguori
  */
 
+/* oxlint-disable unicorn/no-useless-undefined */
+
 const MATTER_PORT = 6000;
 const NAME = 'Platform';
 const CREATE_ONLY = true;
@@ -669,8 +671,8 @@ describe('TestPlatform', () => {
     platform = new Platform(matterbridge, log, testConfig);
     addMatterbridge(platform);
 
-    const saveConfigSpy = vi.spyOn(platform, 'saveConfig').mockImplementation(() => undefined as never);
-    const snackbarSpy = vi.spyOn(platform, 'wssSendSnackbarMessage').mockImplementation(() => undefined as never);
+    const saveConfigSpy = vi.spyOn(platform, 'saveConfig').mockImplementation(() => undefined);
+    const snackbarSpy = vi.spyOn(platform, 'wssSendSnackbarMessage').mockImplementation(() => undefined);
 
     await platform.onAction('retrieve', undefined, 'matterbridge-irobot.schema.json', {
       ...testConfig,
@@ -732,8 +734,8 @@ describe('TestPlatform', () => {
     platform = new Platform(matterbridge, log, testConfig);
     addMatterbridge(platform);
 
-    const saveConfigSpy = vi.spyOn(platform, 'saveConfig').mockImplementation(() => undefined as never);
-    const snackbarSpy = vi.spyOn(platform, 'wssSendSnackbarMessage').mockImplementation(() => undefined as never);
+    const saveConfigSpy = vi.spyOn(platform, 'saveConfig').mockImplementation(() => undefined);
+    const snackbarSpy = vi.spyOn(platform, 'wssSendSnackbarMessage').mockImplementation(() => undefined);
 
     await platform.onAction('retrieve', undefined, 'matterbridge-irobot.schema.json', {
       ...testConfig,

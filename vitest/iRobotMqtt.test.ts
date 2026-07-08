@@ -307,7 +307,7 @@ describe('IRobotMqtt', () => {
         password: 'PASSWORD',
         logger: logger as any,
       },
-      connectFn as unknown as (url: string, options: IClientOptions) => any,
+      connectFn,
     );
 
     // @ts-expect-error - set internal client for testing disconnect without needing to run connect()
