@@ -1,11 +1,12 @@
 /**
+ * @file src/iRobotDiscovery.ts
  * @description This file contains the class IRobotDiscovery.
- * @file src\iRobotDiscovery.ts
  * @author Luca Liguori
  * @created 2026-03-25
  * @version 1.0.0
  * @license Apache-2.0
- * @copyright 2026, 2027, 2028 Luca Liguori.
+ *
+ * Copyright 2026, 2027, 2028 Luca Liguori.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -208,6 +209,7 @@ export class IRobotDiscovery {
 
       socket.on('message', (msg, rinfo) => {
         try {
+          // oxlint-disable-next-line typescript/no-unsafe-type-assertion
           const parsed = JSON.parse(msg.toString()) as IRobotDiscoveryInfo;
           const prefix = parsed.hostname?.split('-')[0];
           if ((prefix === 'Roomba' || prefix === 'iRobot') && parsed.ip) {
@@ -261,6 +263,7 @@ export class IRobotDiscovery {
 
       socket.on('message', (msg, rinfo) => {
         try {
+          // oxlint-disable-next-line typescript/no-unsafe-type-assertion
           const parsedMsg = JSON.parse(msg.toString()) as IRobotDiscoveryInfo;
           this.log.debug(`Received discovery response from ${robotIP}:`, parsedMsg);
           if (parsedMsg.hostname && parsedMsg.ip && (parsedMsg.hostname.split('-')[0] === 'Roomba' || parsedMsg.hostname.split('-')[0] === 'iRobot')) {

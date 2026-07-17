@@ -1,11 +1,12 @@
 /**
+ * @file src/iRobotGetCredentials.ts
  * @description This file contains the class IRobotCredentials.
- * @file src\iRobotGetCredentials.ts
  * @author Luca Liguori
  * @created 2026-03-25
  * @version 1.0.0
  * @license Apache-2.0
- * @copyright 2026, 2027, 2028 Luca Liguori.
+ *
+ * Copyright 2026, 2027, 2028 Luca Liguori.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -234,16 +235,18 @@ export class IRobotCredentials {
     return body;
   }
 
+  // oxlint-disable-next-line typescript/no-unnecessary-type-parameters
   private async fetchJson<T>(input: string, init: RequestInit): Promise<{ status: number; body: T }> {
     const response = await this.fetchFn(input, init);
+    // oxlint-disable-next-line typescript/no-unsafe-type-assertion
     const body = (await response.json()) as T;
     return { status: response.status, body };
   }
 
   private pickHttpBase(deployments?: Record<string, { httpBase?: string }>): string | null {
     const keys = Object.keys(deployments ?? {})
-      .sort()
-      .reverse();
+      .toSorted()
+      .toReversed();
 
     for (const key of keys) {
       const deployment = deployments?.[key];

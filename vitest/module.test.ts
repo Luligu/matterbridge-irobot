@@ -1,39 +1,42 @@
+/**
+ * @file vitest/module.test.ts
+ * @description This file contains the tests for the Platform class.
+ * @author Luca Liguori
+ */
+
+/* oxlint-disable unicorn/no-useless-undefined */
+
 const MATTER_PORT = 6000;
 const NAME = 'Platform';
 const CREATE_ONLY = true;
 
-import { jest } from '@jest/globals';
-import { invokeSubscribeHandler, MatterbridgeEndpoint } from 'matterbridge';
+import { invokeSubscribeHandler, MatterbridgeEndpoint, type PlatformMatterbridge } from 'matterbridge';
 import { RoboticVacuumCleaner } from 'matterbridge/devices';
-import {
-  addMatterbridgePlatform,
-  createMatterbridgeEnvironment,
-  destroyMatterbridgeEnvironment,
-  flushAsync,
-  log,
-  loggerDebugSpy,
-  loggerErrorSpy,
-  loggerInfoSpy,
-  loggerNoticeSpy,
-  loggerWarnSpy,
-  matterbridge,
-  setAttributeMatterbridgeEndpointSpy,
-  setDebug,
-  setupTest,
-  startMatterbridgeEnvironment,
-  stopMatterbridgeEnvironment,
-} from 'matterbridge/jestutils';
 import { LogLevel } from 'matterbridge/logger';
 import { PowerSource, RvcCleanMode, RvcOperationalState, RvcRunMode, ServiceArea } from 'matterbridge/matter/clusters';
+import { flushAsync, log, loggerDebugSpy, loggerErrorSpy, loggerInfoSpy, loggerNoticeSpy, loggerWarnSpy, setDebug, setupTest } from 'matterbridge/vitest-utils';
+import {
+  addMatterbridge,
+  createServerNode,
+  createTestEnvironment,
+  destroyTestEnvironment,
+  flushServerNode,
+  getMatterbridge,
+  startServerNode,
+  stopServerNode,
+} from 'matterbridge/vitest-utils/matter';
 
-import { IRobotDiscovery, type IRobotDiscoveryInfo } from './iRobotDiscovery.js';
-import { IRobotCredentials } from './iRobotGetCredentials.js';
-import { IRobotMqtt } from './iRobotMqtt.js';
-import initializePlugin, { iRobotPlatformConfig, Platform } from './module.js';
+import { IRobotDiscovery, type IRobotDiscoveryInfo } from '../src/iRobotDiscovery.js';
+import { IRobotCredentials } from '../src/iRobotGetCredentials.js';
+import { IRobotMqtt } from '../src/iRobotMqtt.js';
+import initializePlugin, { type iRobotPlatformConfig, Platform } from '../src/module.js';
 
 await setupTest(NAME);
 
+const setAttributeMatterbridgeEndpointSpy = vi.spyOn(MatterbridgeEndpoint.prototype, 'setAttribute');
+
 describe('TestPlatform', () => {
+  let matterbridge: PlatformMatterbridge;
   let platform: Platform | undefined;
   let device: MatterbridgeEndpoint | undefined;
 
@@ -56,34 +59,37 @@ describe('TestPlatform', () => {
 
   beforeAll(async () => {
     // Create Matterbridge environment
-    await createMatterbridgeEnvironment();
-    await startMatterbridgeEnvironment(MATTER_PORT, CREATE_ONLY);
+    await createTestEnvironment();
+    await createServerNode(MATTER_PORT);
+    if (!CREATE_ONLY) await startServerNode();
+    matterbridge = getMatterbridge();
   });
 
   beforeEach(() => {
     // Reset the mock calls before each test
-    jest.clearAllMocks();
+    vi.clearAllMocks();
   });
 
   afterEach(async () => {
     // Cleanup after each test
-    jest.clearAllMocks();
+    vi.clearAllMocks();
     // Set debug to false after each test to avoid verbose logging in tests that don't need it
     await setDebug(false);
   });
 
   afterAll(async () => {
     // Destroy Matterbridge environment
-    await stopMatterbridgeEnvironment(CREATE_ONLY);
-    await destroyMatterbridgeEnvironment(undefined, undefined, CREATE_ONLY);
+    if (CREATE_ONLY) await flushServerNode();
+    else await stopServerNode();
+    await destroyTestEnvironment();
 
     // Restore all mocks
-    jest.restoreAllMocks();
+    vi.restoreAllMocks();
   });
 
   it('should return an instance of TestPlatform', async () => {
     platform = initializePlugin(matterbridge, log, config);
-    addMatterbridgePlatform(platform);
+    addMatterbridge(platform);
     expect(platform).toBeInstanceOf(Platform);
     expect(loggerInfoSpy).toHaveBeenCalledWith('Initializing platform:', config.name);
     expect(loggerInfoSpy).toHaveBeenCalledWith('Finished initializing platform:', config.name);
@@ -93,14 +99,14 @@ describe('TestPlatform', () => {
 
   it('should throw error in load when version is not valid', () => {
     expect(() => new Platform({ ...matterbridge, matterbridgeVersion: '1.5.0' }, log, config)).toThrow(
-      'This plugin requires Matterbridge version >= "3.8.0". Please update Matterbridge to the latest version in the frontend.',
+      'This plugin requires Matterbridge version >= "3.9.0". Please update Matterbridge to the latest version in the frontend.',
     );
   });
 
   it('should create platform instance', async () => {
     platform = new Platform(matterbridge, log, config);
     expect(platform).toBeDefined();
-    addMatterbridgePlatform(platform);
+    addMatterbridge(platform);
     expect(loggerInfoSpy).toHaveBeenCalledWith('Initializing platform:', config.name);
     expect(loggerInfoSpy).toHaveBeenCalledWith('Finished initializing platform:', config.name);
   });
@@ -121,26 +127,20 @@ describe('TestPlatform', () => {
     device = platform.getDeviceByName(config.devices[0].name);
     expect(device).toBeDefined();
     if (!device) throw new Error('Device instance is not defined');
-    await invokeSubscribeHandler(device, RvcOperationalState.Complete, 'currentPhase', 2, 1);
-    await invokeSubscribeHandler(
-      device,
-      RvcOperationalState.Complete,
-      'operationalState',
-      RvcOperationalState.OperationalState.SeekingCharger,
-      RvcOperationalState.OperationalState.Docked,
-    );
+    await invokeSubscribeHandler(device, RvcOperationalState, 'currentPhase', 2, 1);
+    await invokeSubscribeHandler(device, RvcOperationalState, 'operationalState', RvcOperationalState.OperationalState.SeekingCharger, RvcOperationalState.OperationalState.Docked);
   });
 
   it('should invoke command handlers', async () => {
     expect(platform).toBeDefined();
     if (!platform) throw new Error('Platform instance is not defined');
-    await device?.invokeBehaviorCommand(RvcRunMode.Complete as any, 'RvcRunMode.changeToMode', { newMode: 2 });
-    await device?.invokeBehaviorCommand(RvcRunMode.Complete as any, 'RvcRunMode.changeToMode', { newMode: 1 });
-    await device?.invokeBehaviorCommand(RvcCleanMode.Complete as any, 'RvcRunMode.changeToMode', { newMode: 1 });
-    await device?.invokeBehaviorCommand(ServiceArea.Complete as any, 'ServiceArea.selectAreas', { newAreas: [] });
-    await device?.invokeBehaviorCommand(RvcOperationalState.Complete as any, 'RvcOperationalState.pause');
-    await device?.invokeBehaviorCommand(RvcOperationalState.Complete as any, 'RvcOperationalState.resume');
-    await device?.invokeBehaviorCommand(RvcOperationalState.Complete as any, 'RvcOperationalState.goHome');
+    await device?.invokeBehaviorCommand(RvcRunMode as any, 'RvcRunMode.changeToMode', { newMode: 2 });
+    await device?.invokeBehaviorCommand(RvcRunMode as any, 'RvcRunMode.changeToMode', { newMode: 1 });
+    await device?.invokeBehaviorCommand(RvcCleanMode as any, 'RvcRunMode.changeToMode', { newMode: 1 });
+    await device?.invokeBehaviorCommand(ServiceArea as any, 'ServiceArea.selectAreas', { newAreas: [] });
+    await device?.invokeBehaviorCommand(RvcOperationalState as any, 'RvcOperationalState.pause');
+    await device?.invokeBehaviorCommand(RvcOperationalState as any, 'RvcOperationalState.resume');
+    await device?.invokeBehaviorCommand(RvcOperationalState as any, 'RvcOperationalState.goHome');
   });
 
   it('should configure', async () => {
@@ -240,7 +240,7 @@ describe('TestPlatform', () => {
   });
 
   it('should discover only new devices and map discovered fields into the config', async () => {
-    const discoverSpy = jest
+    const discoverSpy = vi
       .spyOn(IRobotDiscovery.prototype, 'discover')
       .mockResolvedValue([
         { ip: '192.168.1.10', hostname: 'Roomba-existing', robotname: 'Existing duplicate', robotid: 'existing-blid' } as never,
@@ -255,7 +255,7 @@ describe('TestPlatform', () => {
     };
 
     platform = new Platform(matterbridge, log, testConfig);
-    addMatterbridgePlatform(platform);
+    addMatterbridge(platform);
 
     await platform.discoverDevices(1234);
 
@@ -275,7 +275,7 @@ describe('TestPlatform', () => {
   });
 
   it('should still run discovery when called directly even if the config flag is disabled', async () => {
-    const discoverSpy = jest
+    const discoverSpy = vi
       .spyOn(IRobotDiscovery.prototype, 'discover')
       .mockResolvedValue([{ ip: '192.168.1.41', hostname: 'Roomba-config-disabled', robotname: 'Configured Later', robotid: 'later-blid' } as never]);
 
@@ -302,7 +302,7 @@ describe('TestPlatform', () => {
   });
 
   it('should log a discovery error and keep the config unchanged when discovery fails', async () => {
-    const discoverSpy = jest.spyOn(IRobotDiscovery.prototype, 'discover').mockRejectedValue(new Error('discover failed'));
+    const discoverSpy = vi.spyOn(IRobotDiscovery.prototype, 'discover').mockRejectedValue(new Error('discover failed'));
 
     const testConfig: iRobotPlatformConfig = {
       ...config,
@@ -311,12 +311,12 @@ describe('TestPlatform', () => {
     };
 
     platform = new Platform(matterbridge, log, testConfig);
-    addMatterbridgePlatform(platform);
+    addMatterbridge(platform);
 
     await platform.discoverDevices(3210);
 
     expect(discoverSpy).toHaveBeenCalledWith(3210);
-    expect(loggerErrorSpy).toHaveBeenCalledWith('Failed to discover iRobot devices. Error: discover failed');
+    expect(loggerErrorSpy).toHaveBeenCalledWith('Failed to discover iRobot devices: discover failed');
     expect(testConfig.devices).toEqual([{ name: 'Existing', ip: '192.168.1.10', blid: 'existing-blid', password: 'secret' }]);
 
     discoverSpy.mockRestore();
@@ -325,7 +325,7 @@ describe('TestPlatform', () => {
   });
 
   it('should register devices, connect configured MQTT, and wire handlers', async () => {
-    const getRobotPublicInfoSpy = jest.spyOn(IRobotDiscovery.prototype, 'getRobotPublicInfo').mockImplementation(
+    const getRobotPublicInfoSpy = vi.spyOn(IRobotDiscovery.prototype, 'getRobotPublicInfo').mockImplementation(
       async (ip, timeout): Promise<IRobotDiscoveryInfo> => ({
         ip,
         hostname: `Roomba-${ip}`,
@@ -333,20 +333,20 @@ describe('TestPlatform', () => {
       }),
     );
     const mqttInstances: IRobotMqtt[] = [];
-    const connectSpy = jest.spyOn(IRobotMqtt.prototype, 'connect').mockImplementation(async function (this: IRobotMqtt) {
+    const connectSpy = vi.spyOn(IRobotMqtt.prototype, 'connect').mockImplementation(async function (this: IRobotMqtt) {
       mqttInstances.push(this);
     });
-    const disconnectSpy = jest.spyOn(IRobotMqtt.prototype, 'disconnect').mockResolvedValue();
-    const cleanSpy = jest.spyOn(IRobotMqtt.prototype, 'clean').mockResolvedValue();
-    const stopSpy = jest.spyOn(IRobotMqtt.prototype, 'stop').mockResolvedValue();
-    const resumeSpy = jest.spyOn(IRobotMqtt.prototype, 'resume').mockResolvedValue();
-    const pauseSpy = jest.spyOn(IRobotMqtt.prototype, 'pause').mockResolvedValue();
-    const goHomeSpy = jest.spyOn(IRobotMqtt.prototype, 'goHome').mockResolvedValue();
-    const addCommandHandlerSpy = jest.spyOn(RoboticVacuumCleaner.prototype, 'addCommandHandler');
-    const subscribeAttributeSpy = jest.spyOn(RoboticVacuumCleaner.prototype, 'subscribeAttribute');
-    const getAttributeSpy = jest.spyOn(RoboticVacuumCleaner.prototype, 'getAttribute').mockImplementation((_cluster, attribute) => {
+    const disconnectSpy = vi.spyOn(IRobotMqtt.prototype, 'disconnect').mockResolvedValue();
+    const cleanSpy = vi.spyOn(IRobotMqtt.prototype, 'clean').mockResolvedValue();
+    const stopSpy = vi.spyOn(IRobotMqtt.prototype, 'stop').mockResolvedValue();
+    const resumeSpy = vi.spyOn(IRobotMqtt.prototype, 'resume').mockResolvedValue();
+    const pauseSpy = vi.spyOn(IRobotMqtt.prototype, 'pause').mockResolvedValue();
+    const goHomeSpy = vi.spyOn(IRobotMqtt.prototype, 'goHome').mockResolvedValue();
+    const addCommandHandlerSpy = vi.spyOn(RoboticVacuumCleaner.prototype, 'addCommandHandler');
+    const subscribeAttributeSpy = vi.spyOn(RoboticVacuumCleaner.prototype, 'subscribeAttribute');
+    const getAttributeSpy = vi.spyOn(RoboticVacuumCleaner.prototype, 'getAttribute').mockImplementation((_cluster, attribute) => {
       if (attribute === 'supportedModes') {
-        if ((_cluster as unknown) === RvcCleanMode.Complete) {
+        if ((_cluster as unknown) === RvcCleanMode) {
           return [{ label: 'Vacuum', mode: 1, modeTags: [{ value: RvcCleanMode.ModeTag.Vacuum }] }];
         }
         return [
@@ -357,6 +357,7 @@ describe('TestPlatform', () => {
       if (attribute === 'phaseList') {
         return ['charge', 'run', 'stop', 'hmUsrDock'];
       }
+      // oxlint-disable-next-line unicorn/no-useless-undefined -- explicit undefined keeps a consistent return type for the mock
       return undefined;
     });
 
@@ -367,7 +368,7 @@ describe('TestPlatform', () => {
     };
 
     platform = new Platform(matterbridge, log, testConfig);
-    addMatterbridgePlatform(platform);
+    addMatterbridge(platform);
 
     await platform.registerDevices(4321);
 
@@ -381,7 +382,7 @@ describe('TestPlatform', () => {
     });
     expect(connectSpy).toHaveBeenCalledTimes(1);
 
-    const registeredCommands = addCommandHandlerSpy.mock.calls.map(([command]) => command).sort();
+    const registeredCommands = addCommandHandlerSpy.mock.calls.map(([command]) => command).toSorted();
     expect(registeredCommands).toEqual([
       'RvcCleanMode.changeToMode',
       'RvcOperationalState.goHome',
@@ -395,13 +396,14 @@ describe('TestPlatform', () => {
     const runModeHandler = commandHandlers.get('RvcRunMode.changeToMode') as ((args: { request: { newMode: number } }) => Promise<void>) | undefined;
     const cleanModeHandler = commandHandlers.get('RvcCleanMode.changeToMode') as ((args: { request: { newMode: number } }) => Promise<void>) | undefined;
     const selectAreasHandler = commandHandlers.get('ServiceArea.selectAreas') as ((args: { request: { newAreas: number[] } }) => Promise<void>) | undefined;
-    const currentPhaseHandler = [...subscribeAttributeSpy.mock.calls].reverse().find(([, attribute]) => attribute === 'currentPhase')?.[2] as
+    const currentPhaseHandler = [...subscribeAttributeSpy.mock.calls].toReversed().find(([, attribute]) => attribute === 'currentPhase')?.[2] as
       | ((newPhase: number | undefined) => Promise<void>)
       | undefined;
-    const operationalStateHandler = [...subscribeAttributeSpy.mock.calls].reverse().find(([, attribute]) => attribute === 'operationalState')?.[2] as
+    const operationalStateHandler = [...subscribeAttributeSpy.mock.calls].toReversed().find(([, attribute]) => attribute === 'operationalState')?.[2] as
       | ((newState: number) => Promise<void>)
       | undefined;
 
+    // oxlint-disable-next-line unicorn/no-useless-undefined -- exercises the undefined-phase branch of the subscribe handler
     await currentPhaseHandler?.(undefined);
     await currentPhaseHandler?.(1);
     await operationalStateHandler?.(64);
@@ -418,8 +420,8 @@ describe('TestPlatform', () => {
     expect(resumeSpy).toHaveBeenCalledTimes(2);
     expect(pauseSpy).toHaveBeenCalledTimes(1);
     expect(goHomeSpy).toHaveBeenCalledTimes(1);
-    expect(getAttributeSpy).toHaveBeenCalledWith(RvcRunMode.Complete, 'supportedModes');
-    expect(getAttributeSpy).toHaveBeenCalledWith(RvcCleanMode.Complete, 'supportedModes');
+    expect(getAttributeSpy).toHaveBeenCalledWith(RvcRunMode, 'supportedModes');
+    expect(getAttributeSpy).toHaveBeenCalledWith(RvcCleanMode, 'supportedModes');
     expect(getAttributeSpy).toHaveBeenCalledWith(expect.anything(), 'phaseList');
     expect(loggerNoticeSpy).toHaveBeenCalledWith('Current Phase changed to 1 >>> run');
     expect(loggerNoticeSpy).toHaveBeenCalledWith('Operational State changed to 64');
@@ -452,25 +454,25 @@ describe('TestPlatform', () => {
   });
 
   it('should wire subscriptions and command handlers without connecting when credentials are missing', async () => {
-    const getRobotPublicInfoSpy = jest.spyOn(IRobotDiscovery.prototype, 'getRobotPublicInfo').mockImplementation(
+    const getRobotPublicInfoSpy = vi.spyOn(IRobotDiscovery.prototype, 'getRobotPublicInfo').mockImplementation(
       async (ip, timeout): Promise<IRobotDiscoveryInfo> => ({
         ip,
         hostname: `Roomba-${ip}`,
         rinfo: { address: ip, family: 'IPv4', port: timeout ?? 5678, size: 0 },
       }),
     );
-    const connectSpy = jest.spyOn(IRobotMqtt.prototype, 'connect').mockResolvedValue();
-    const disconnectSpy = jest.spyOn(IRobotMqtt.prototype, 'disconnect').mockResolvedValue();
-    const cleanSpy = jest.spyOn(IRobotMqtt.prototype, 'clean').mockResolvedValue();
-    const stopSpy = jest.spyOn(IRobotMqtt.prototype, 'stop').mockResolvedValue();
-    const resumeSpy = jest.spyOn(IRobotMqtt.prototype, 'resume').mockResolvedValue();
-    const pauseSpy = jest.spyOn(IRobotMqtt.prototype, 'pause').mockResolvedValue();
-    const goHomeSpy = jest.spyOn(IRobotMqtt.prototype, 'goHome').mockResolvedValue();
-    const addCommandHandlerSpy = jest.spyOn(RoboticVacuumCleaner.prototype, 'addCommandHandler');
-    const subscribeAttributeSpy = jest.spyOn(RoboticVacuumCleaner.prototype, 'subscribeAttribute');
-    const getAttributeSpy = jest.spyOn(RoboticVacuumCleaner.prototype, 'getAttribute').mockImplementation((_cluster, attribute) => {
+    const connectSpy = vi.spyOn(IRobotMqtt.prototype, 'connect').mockResolvedValue();
+    const disconnectSpy = vi.spyOn(IRobotMqtt.prototype, 'disconnect').mockResolvedValue();
+    const cleanSpy = vi.spyOn(IRobotMqtt.prototype, 'clean').mockResolvedValue();
+    const stopSpy = vi.spyOn(IRobotMqtt.prototype, 'stop').mockResolvedValue();
+    const resumeSpy = vi.spyOn(IRobotMqtt.prototype, 'resume').mockResolvedValue();
+    const pauseSpy = vi.spyOn(IRobotMqtt.prototype, 'pause').mockResolvedValue();
+    const goHomeSpy = vi.spyOn(IRobotMqtt.prototype, 'goHome').mockResolvedValue();
+    const addCommandHandlerSpy = vi.spyOn(RoboticVacuumCleaner.prototype, 'addCommandHandler');
+    const subscribeAttributeSpy = vi.spyOn(RoboticVacuumCleaner.prototype, 'subscribeAttribute');
+    const getAttributeSpy = vi.spyOn(RoboticVacuumCleaner.prototype, 'getAttribute').mockImplementation((_cluster, attribute) => {
       if (attribute === 'supportedModes') {
-        if ((_cluster as unknown) === RvcCleanMode.Complete) {
+        if ((_cluster as unknown) === RvcCleanMode) {
           return [{ label: 'Vacuum', mode: 1, modeTags: [{ value: RvcCleanMode.ModeTag.Vacuum }] }];
         }
         return [
@@ -481,6 +483,7 @@ describe('TestPlatform', () => {
       if (attribute === 'phaseList') {
         return ['charge', 'run', 'stop', 'hmUsrDock'];
       }
+      // oxlint-disable-next-line unicorn/no-useless-undefined -- explicit undefined keeps a consistent return type for the mock
       return undefined;
     });
 
@@ -490,13 +493,13 @@ describe('TestPlatform', () => {
     };
 
     platform = new Platform(matterbridge, log, testConfig);
-    addMatterbridgePlatform(platform);
+    addMatterbridge(platform);
 
     await platform.registerDevices(4321);
 
     expect(connectSpy).not.toHaveBeenCalled();
     expect(loggerWarnSpy).toHaveBeenCalledWith('Device "Hallway" (192.168.1.51) has no local MQTT credentials (blid/password); commands will be read-only.');
-    expect(addCommandHandlerSpy.mock.calls.map(([command]) => command).sort()).toEqual([
+    expect(addCommandHandlerSpy.mock.calls.map(([command]) => command).toSorted()).toEqual([
       'RvcCleanMode.changeToMode',
       'RvcOperationalState.goHome',
       'RvcOperationalState.pause',
@@ -509,13 +512,14 @@ describe('TestPlatform', () => {
     const runModeHandler = commandHandlers.get('RvcRunMode.changeToMode') as ((args: { request: { newMode: number } }) => Promise<void>) | undefined;
     const cleanModeHandler = commandHandlers.get('RvcCleanMode.changeToMode') as ((args: { request: { newMode: number } }) => Promise<void>) | undefined;
     const selectAreasHandler = commandHandlers.get('ServiceArea.selectAreas') as ((args: { request: { newAreas: number[] } }) => Promise<void>) | undefined;
-    const currentPhaseHandler = [...subscribeAttributeSpy.mock.calls].reverse().find(([, attribute]) => attribute === 'currentPhase')?.[2] as
+    const currentPhaseHandler = [...subscribeAttributeSpy.mock.calls].toReversed().find(([, attribute]) => attribute === 'currentPhase')?.[2] as
       | ((newPhase: number | undefined) => Promise<void>)
       | undefined;
-    const operationalStateHandler = [...subscribeAttributeSpy.mock.calls].reverse().find(([, attribute]) => attribute === 'operationalState')?.[2] as
+    const operationalStateHandler = [...subscribeAttributeSpy.mock.calls].toReversed().find(([, attribute]) => attribute === 'operationalState')?.[2] as
       | ((newState: number) => Promise<void>)
       | undefined;
 
+    // oxlint-disable-next-line unicorn/no-useless-undefined -- exercises the undefined-phase branch of the subscribe handler
     await currentPhaseHandler?.(undefined);
     await currentPhaseHandler?.(1);
     await operationalStateHandler?.(64);
@@ -532,8 +536,8 @@ describe('TestPlatform', () => {
     expect(resumeSpy).toHaveBeenCalledTimes(2);
     expect(pauseSpy).toHaveBeenCalledTimes(1);
     expect(goHomeSpy).toHaveBeenCalledTimes(1);
-    expect(getAttributeSpy).toHaveBeenCalledWith(RvcRunMode.Complete, 'supportedModes');
-    expect(getAttributeSpy).toHaveBeenCalledWith(RvcCleanMode.Complete, 'supportedModes');
+    expect(getAttributeSpy).toHaveBeenCalledWith(RvcRunMode, 'supportedModes');
+    expect(getAttributeSpy).toHaveBeenCalledWith(RvcCleanMode, 'supportedModes');
     expect(getAttributeSpy).toHaveBeenCalledWith(expect.anything(), 'phaseList');
     expect(loggerNoticeSpy).toHaveBeenCalledWith('Current Phase changed to 1 >>> run');
     expect(loggerNoticeSpy).toHaveBeenCalledWith('Operational State changed to 64');
@@ -559,7 +563,7 @@ describe('TestPlatform', () => {
   });
 
   it('should log public info and MQTT connection failures while continuing registration', async () => {
-    const getRobotPublicInfoSpy = jest.spyOn(IRobotDiscovery.prototype, 'getRobotPublicInfo').mockImplementation(async (ip): Promise<IRobotDiscoveryInfo> => {
+    const getRobotPublicInfoSpy = vi.spyOn(IRobotDiscovery.prototype, 'getRobotPublicInfo').mockImplementation(async (ip): Promise<IRobotDiscoveryInfo> => {
       if (ip === '192.168.1.60') throw new Error('public info failed');
       return {
         ip,
@@ -567,8 +571,8 @@ describe('TestPlatform', () => {
         rinfo: { address: ip, family: 'IPv4', port: 5678, size: 0 },
       };
     });
-    const connectSpy = jest.spyOn(IRobotMqtt.prototype, 'connect').mockRejectedValue(new Error('mqtt connect failed'));
-    const disconnectSpy = jest.spyOn(IRobotMqtt.prototype, 'disconnect').mockResolvedValue();
+    const connectSpy = vi.spyOn(IRobotMqtt.prototype, 'connect').mockRejectedValue(new Error('mqtt connect failed'));
+    const disconnectSpy = vi.spyOn(IRobotMqtt.prototype, 'disconnect').mockResolvedValue();
 
     const testConfig: iRobotPlatformConfig = {
       ...config,
@@ -579,14 +583,14 @@ describe('TestPlatform', () => {
     };
 
     platform = new Platform(matterbridge, log, testConfig);
-    addMatterbridgePlatform(platform);
+    addMatterbridge(platform);
 
     await platform.registerDevices(2468);
 
     expect(getRobotPublicInfoSpy).toHaveBeenNthCalledWith(1, '192.168.1.60', 2468);
     expect(getRobotPublicInfoSpy).toHaveBeenNthCalledWith(2, '192.168.1.61', 2468);
     expect(connectSpy).toHaveBeenCalledTimes(1);
-    expect(loggerErrorSpy).toHaveBeenCalledWith('Failed to get public info for device "Office" with IP 192.168.1.60. Error: public info failed');
+    expect(loggerErrorSpy).toHaveBeenCalledWith('Failed to get public info for device "Office" with IP 192.168.1.60: public info failed');
     expect(loggerErrorSpy).toHaveBeenCalledWith('Failed to connect MQTT for device "Office" (192.168.1.60):', expect.any(Error));
     expect(loggerWarnSpy).toHaveBeenCalledWith('Device "Guest" (192.168.1.61) has no local MQTT credentials (blid/password); commands will be read-only.');
 
@@ -601,15 +605,15 @@ describe('TestPlatform', () => {
   });
 
   it('should log a debug message when MQTT disconnect fails during shutdown', async () => {
-    const getRobotPublicInfoSpy = jest.spyOn(IRobotDiscovery.prototype, 'getRobotPublicInfo').mockImplementation(
+    const getRobotPublicInfoSpy = vi.spyOn(IRobotDiscovery.prototype, 'getRobotPublicInfo').mockImplementation(
       async (ip): Promise<IRobotDiscoveryInfo> => ({
         ip,
         hostname: `Roomba-${ip}`,
         rinfo: { address: ip, family: 'IPv4', port: 5678, size: 0 },
       }),
     );
-    const connectSpy = jest.spyOn(IRobotMqtt.prototype, 'connect').mockResolvedValue();
-    const disconnectSpy = jest.spyOn(IRobotMqtt.prototype, 'disconnect').mockRejectedValue(new Error('disconnect failed'));
+    const connectSpy = vi.spyOn(IRobotMqtt.prototype, 'connect').mockResolvedValue();
+    const disconnectSpy = vi.spyOn(IRobotMqtt.prototype, 'disconnect').mockRejectedValue(new Error('disconnect failed'));
 
     const testConfig: iRobotPlatformConfig = {
       ...config,
@@ -617,14 +621,14 @@ describe('TestPlatform', () => {
     };
 
     platform = new Platform(matterbridge, log, testConfig);
-    addMatterbridgePlatform(platform);
+    addMatterbridge(platform);
 
     await platform.registerDevices();
     await platform.onShutdown('disconnect failure cleanup');
 
     expect(connectSpy).toHaveBeenCalledTimes(1);
     expect(disconnectSpy).toHaveBeenCalledWith(true);
-    expect(loggerDebugSpy).toHaveBeenCalledWith('Failed to disconnect MQTT client for device with IP 192.168.1.70. Error: disconnect failed');
+    expect(loggerDebugSpy).toHaveBeenCalledWith('Failed to disconnect MQTT client for device with IP 192.168.1.70: disconnect failed');
 
     getRobotPublicInfoSpy.mockRestore();
     connectSpy.mockRestore();
@@ -633,7 +637,7 @@ describe('TestPlatform', () => {
   });
 
   it('should retrieve credentials, update existing devices, add new devices, and save the config on onAction', async () => {
-    const credentialsSpy = jest.spyOn(IRobotCredentials.prototype, 'getCredentials').mockResolvedValue([
+    const credentialsSpy = vi.spyOn(IRobotCredentials.prototype, 'getCredentials').mockResolvedValue([
       {
         blid: 'existing-blid-updated',
         password: 'existing-password-updated',
@@ -665,10 +669,10 @@ describe('TestPlatform', () => {
     };
 
     platform = new Platform(matterbridge, log, testConfig);
-    addMatterbridgePlatform(platform);
+    addMatterbridge(platform);
 
-    const saveConfigSpy = jest.spyOn(platform, 'saveConfig').mockImplementation(() => undefined as never);
-    const snackbarSpy = jest.spyOn(platform, 'wssSendSnackbarMessage').mockImplementation(() => undefined as never);
+    const saveConfigSpy = vi.spyOn(platform, 'saveConfig').mockImplementation(() => undefined);
+    const snackbarSpy = vi.spyOn(platform, 'wssSendSnackbarMessage').mockImplementation(() => undefined);
 
     await platform.onAction('retrieve', undefined, 'matterbridge-irobot.schema.json', {
       ...testConfig,
@@ -711,7 +715,7 @@ describe('TestPlatform', () => {
   });
 
   it('should warn and avoid saving config when onAction retrieve gets zero credentials', async () => {
-    const credentialsSpy = jest.spyOn(IRobotCredentials.prototype, 'getCredentials').mockResolvedValue([]);
+    const credentialsSpy = vi.spyOn(IRobotCredentials.prototype, 'getCredentials').mockResolvedValue([]);
 
     const testConfig: iRobotPlatformConfig = {
       ...config,
@@ -728,10 +732,10 @@ describe('TestPlatform', () => {
     };
 
     platform = new Platform(matterbridge, log, testConfig);
-    addMatterbridgePlatform(platform);
+    addMatterbridge(platform);
 
-    const saveConfigSpy = jest.spyOn(platform, 'saveConfig').mockImplementation(() => undefined as never);
-    const snackbarSpy = jest.spyOn(platform, 'wssSendSnackbarMessage').mockImplementation(() => undefined as never);
+    const saveConfigSpy = vi.spyOn(platform, 'saveConfig').mockImplementation(() => undefined);
+    const snackbarSpy = vi.spyOn(platform, 'wssSendSnackbarMessage').mockImplementation(() => undefined);
 
     await platform.onAction('retrieve', undefined, 'matterbridge-irobot.schema.json', {
       ...testConfig,

@@ -1,17 +1,18 @@
-const MATTER_PORT = 0;
+/**
+ * @file vitest/iRobotDiscovery.test.ts
+ * @description This file contains the tests for the IRobotDiscovery class.
+ * @author Luca Liguori
+ */
+
 const NAME = 'IRobotDiscovery';
-const HOMEDIR = path.join('jest', NAME);
-const CREATE_ONLY = true;
 
 import type { RemoteInfo } from 'node:dgram';
 import dgram from 'node:dgram';
 import { EventEmitter } from 'node:events';
-import path from 'node:path';
 
-import { afterEach, describe, expect, it, jest } from '@jest/globals';
-import { setupTest } from 'matterbridge/jestutils';
+import { setupTest } from 'matterbridge/vitest-utils';
 
-import { IRobotDiscovery } from './iRobotDiscovery.js';
+import { IRobotDiscovery } from '../src/iRobotDiscovery.js';
 
 await setupTest(NAME, false);
 
@@ -50,19 +51,19 @@ function makeRinfo(address: string): RemoteInfo {
 
 afterEach(() => {
   try {
-    jest.clearAllTimers();
+    vi.clearAllTimers();
   } catch {
     // ignore (e.g. if fake timers were not enabled)
   }
-  jest.useRealTimers();
+  vi.useRealTimers();
 });
 
 describe('IRobotDiscovery', () => {
   it('discover uses the default timeout when omitted', async () => {
-    jest.useFakeTimers();
+    vi.useFakeTimers();
 
     let socket: FakeSocket | undefined;
-    jest.spyOn(dgram, 'createSocket').mockImplementation(() => {
+    vi.spyOn(dgram, 'createSocket').mockImplementation(() => {
       socket = new FakeSocket();
       return socket as unknown as dgram.Socket;
     });
@@ -70,7 +71,7 @@ describe('IRobotDiscovery', () => {
     const discovery = new IRobotDiscovery();
     const promise = discovery.discover();
 
-    await jest.advanceTimersByTimeAsync(5000);
+    await vi.advanceTimersByTimeAsync(5000);
     const result = await promise;
 
     expect(result).toEqual([]);
@@ -78,10 +79,10 @@ describe('IRobotDiscovery', () => {
   });
 
   it('discover collects iRobot/Roomba responses and ignores invalid ones', async () => {
-    jest.useFakeTimers();
+    vi.useFakeTimers();
 
     let socket: FakeSocket | undefined;
-    jest.spyOn(dgram, 'createSocket').mockImplementation(() => {
+    vi.spyOn(dgram, 'createSocket').mockImplementation(() => {
       socket = new FakeSocket();
       return socket as unknown as dgram.Socket;
     });
@@ -108,7 +109,7 @@ describe('IRobotDiscovery', () => {
     // Valid device should be collected.
     socket?.emit('message', Buffer.from(JSON.stringify({ hostname: 'Roomba-ABC', ip: '10.0.0.2' })), makeRinfo('10.0.0.2'));
 
-    await jest.advanceTimersByTimeAsync(100);
+    await vi.advanceTimersByTimeAsync(100);
     const result = await promise;
 
     expect(result).toHaveLength(1);
@@ -119,10 +120,10 @@ describe('IRobotDiscovery', () => {
   });
 
   it('discover rejects on socket error', async () => {
-    jest.useFakeTimers();
+    vi.useFakeTimers();
 
     let socket: FakeSocket | undefined;
-    jest.spyOn(dgram, 'createSocket').mockImplementation(() => {
+    vi.spyOn(dgram, 'createSocket').mockImplementation(() => {
       socket = new FakeSocket();
       return socket as unknown as dgram.Socket;
     });
@@ -136,14 +137,14 @@ describe('IRobotDiscovery', () => {
     expect(socket?.closed).toBe(true);
 
     // Flush the pending timeout callback inside discover().
-    await jest.runOnlyPendingTimersAsync();
+    await vi.runOnlyPendingTimersAsync();
   });
 
   it('getRobotPublicInfo resolves and extracts robotid', async () => {
-    jest.useFakeTimers();
+    vi.useFakeTimers();
 
     let socket: FakeSocket | undefined;
-    jest.spyOn(dgram, 'createSocket').mockImplementation(() => {
+    vi.spyOn(dgram, 'createSocket').mockImplementation(() => {
       socket = new FakeSocket();
       return socket as unknown as dgram.Socket;
     });
@@ -167,14 +168,14 @@ describe('IRobotDiscovery', () => {
     expect(info.robotid).toBe('12345');
     expect(socket?.closed).toBe(true);
 
-    await jest.runOnlyPendingTimersAsync();
+    await vi.runOnlyPendingTimersAsync();
   });
 
   it('getRobotPublicInfo ignores invalid responses and times out', async () => {
-    jest.useFakeTimers();
+    vi.useFakeTimers();
 
     let socket: FakeSocket | undefined;
-    jest.spyOn(dgram, 'createSocket').mockImplementation(() => {
+    vi.spyOn(dgram, 'createSocket').mockImplementation(() => {
       socket = new FakeSocket();
       return socket as unknown as dgram.Socket;
     });
@@ -188,15 +189,15 @@ describe('IRobotDiscovery', () => {
     // Wrong prefix should be ignored.
     socket?.emit('message', Buffer.from(JSON.stringify({ hostname: 'Other-1', ip: '10.0.0.9' })));
 
-    await Promise.all([expect(promise).rejects.toThrow('Timeout getting robot info from 10.0.0.9'), jest.advanceTimersByTimeAsync(50)]);
+    await Promise.all([expect(promise).rejects.toThrow('Timeout getting robot info from 10.0.0.9'), vi.advanceTimersByTimeAsync(50)]);
     expect(socket?.closed).toBe(true);
   });
 
   it('getRobotPublicInfo rejects on socket error', async () => {
-    jest.useFakeTimers();
+    vi.useFakeTimers();
 
     let socket: FakeSocket | undefined;
-    jest.spyOn(dgram, 'createSocket').mockImplementation(() => {
+    vi.spyOn(dgram, 'createSocket').mockImplementation(() => {
       socket = new FakeSocket();
       return socket as unknown as dgram.Socket;
     });
@@ -209,14 +210,14 @@ describe('IRobotDiscovery', () => {
     await expect(promise).rejects.toThrow('fail');
     expect(socket?.closed).toBe(true);
 
-    await jest.runOnlyPendingTimersAsync();
+    await vi.runOnlyPendingTimersAsync();
   });
 
   it('getRobotPublicInfo uses the default timeout when omitted', async () => {
-    jest.useFakeTimers();
+    vi.useFakeTimers();
 
     let socket: FakeSocket | undefined;
-    jest.spyOn(dgram, 'createSocket').mockImplementation(() => {
+    vi.spyOn(dgram, 'createSocket').mockImplementation(() => {
       socket = new FakeSocket();
       return socket as unknown as dgram.Socket;
     });
@@ -224,7 +225,7 @@ describe('IRobotDiscovery', () => {
     const discovery = new IRobotDiscovery();
     const promise = discovery.getRobotPublicInfo('10.0.0.9');
 
-    await Promise.all([expect(promise).rejects.toThrow('Timeout getting robot info from 10.0.0.9'), jest.advanceTimersByTimeAsync(5000)]);
+    await Promise.all([expect(promise).rejects.toThrow('Timeout getting robot info from 10.0.0.9'), vi.advanceTimersByTimeAsync(5000)]);
     expect(socket?.closed).toBe(true);
   });
 });
