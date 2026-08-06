@@ -325,13 +325,11 @@ describe('TestPlatform', () => {
   });
 
   it('should register devices, connect configured MQTT, and wire handlers', async () => {
-    const getRobotPublicInfoSpy = vi.spyOn(IRobotDiscovery.prototype, 'getRobotPublicInfo').mockImplementation(
-      async (ip, timeout): Promise<IRobotDiscoveryInfo> => ({
-        ip,
-        hostname: `Roomba-${ip}`,
-        rinfo: { address: ip, family: 'IPv4', port: timeout ?? 5678, size: 0 },
-      }),
-    );
+    const getRobotPublicInfoSpy = vi.spyOn(IRobotDiscovery.prototype, 'getRobotPublicInfo').mockImplementation(async (ip, timeout): Promise<IRobotDiscoveryInfo> => ({
+      ip,
+      hostname: `Roomba-${ip}`,
+      rinfo: { address: ip, family: 'IPv4', port: timeout ?? 5678, size: 0 },
+    }));
     const mqttInstances: IRobotMqtt[] = [];
     const connectSpy = vi.spyOn(IRobotMqtt.prototype, 'connect').mockImplementation(async function (this: IRobotMqtt) {
       mqttInstances.push(this);
@@ -454,13 +452,11 @@ describe('TestPlatform', () => {
   });
 
   it('should wire subscriptions and command handlers without connecting when credentials are missing', async () => {
-    const getRobotPublicInfoSpy = vi.spyOn(IRobotDiscovery.prototype, 'getRobotPublicInfo').mockImplementation(
-      async (ip, timeout): Promise<IRobotDiscoveryInfo> => ({
-        ip,
-        hostname: `Roomba-${ip}`,
-        rinfo: { address: ip, family: 'IPv4', port: timeout ?? 5678, size: 0 },
-      }),
-    );
+    const getRobotPublicInfoSpy = vi.spyOn(IRobotDiscovery.prototype, 'getRobotPublicInfo').mockImplementation(async (ip, timeout): Promise<IRobotDiscoveryInfo> => ({
+      ip,
+      hostname: `Roomba-${ip}`,
+      rinfo: { address: ip, family: 'IPv4', port: timeout ?? 5678, size: 0 },
+    }));
     const connectSpy = vi.spyOn(IRobotMqtt.prototype, 'connect').mockResolvedValue();
     const disconnectSpy = vi.spyOn(IRobotMqtt.prototype, 'disconnect').mockResolvedValue();
     const cleanSpy = vi.spyOn(IRobotMqtt.prototype, 'clean').mockResolvedValue();
@@ -605,13 +601,11 @@ describe('TestPlatform', () => {
   });
 
   it('should log a debug message when MQTT disconnect fails during shutdown', async () => {
-    const getRobotPublicInfoSpy = vi.spyOn(IRobotDiscovery.prototype, 'getRobotPublicInfo').mockImplementation(
-      async (ip): Promise<IRobotDiscoveryInfo> => ({
-        ip,
-        hostname: `Roomba-${ip}`,
-        rinfo: { address: ip, family: 'IPv4', port: 5678, size: 0 },
-      }),
-    );
+    const getRobotPublicInfoSpy = vi.spyOn(IRobotDiscovery.prototype, 'getRobotPublicInfo').mockImplementation(async (ip): Promise<IRobotDiscoveryInfo> => ({
+      ip,
+      hostname: `Roomba-${ip}`,
+      rinfo: { address: ip, family: 'IPv4', port: 5678, size: 0 },
+    }));
     const connectSpy = vi.spyOn(IRobotMqtt.prototype, 'connect').mockResolvedValue();
     const disconnectSpy = vi.spyOn(IRobotMqtt.prototype, 'disconnect').mockRejectedValue(new Error('disconnect failed'));
 
