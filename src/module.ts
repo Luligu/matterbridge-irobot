@@ -251,6 +251,7 @@ export class Platform extends MatterbridgeDynamicPlatform {
       const selectedAreas: number[] = [];
       const currentArea: number | null = null;
       const supportedMaps: ServiceArea.Map[] = [];
+      // oxlint-disable-next-line typescript/no-deprecated
       const rvc = new RoboticVacuumCleaner(
         device.name,
         device.ip ?? device.name.toLocaleLowerCase().replaceAll(' ', '-') + '-unknown-ip',

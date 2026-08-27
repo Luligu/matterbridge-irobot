@@ -39,13 +39,16 @@ If you like this project and find it useful, please consider giving it a star on
 
 - [chip]: Add chip-test toolchain agents instruction and chip-test runner.
 - [frontend]: Add plugin-frontend agents instructions.
+- [devcontainer]: Upgrade the `Dev Container` to v.2.0.0, using the Node.js and Bun stack.
 
 ### Changed
 
-- [package]: Bump `oxfmt` to v.0.63.0.
-- [package]: Bump `oxlint` to v.1.78.0.
+- [package]: Upgrade package.
+- [package]: Bump `oxfmt` to v.0.65.0.
+- [package]: Bump `oxlint` to v.1.80.0.
 - [package]: Bump `oxlint-tsgolint` to v.7.0.2001.
-- [package]: Bump `@types/node` to v.26.2.0.
+- [package]: Bump `@types/node` to v.26.4.0.
+- [package]: Bump `vitest` to v.4.1.11.
 - [package]: Update agents configs.
 - [devcontainer]: Bump `Dev Container` to v.1.2.0.
 - [vscode]: Bump `settings` to v.1.0.10.
