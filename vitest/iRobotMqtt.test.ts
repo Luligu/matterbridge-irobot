@@ -9,7 +9,7 @@ const NAME = 'IRobotMqtt';
 import { EventEmitter } from 'node:events';
 import { inspect } from 'node:util';
 
-import { setupTest } from 'matterbridge/vitest-utils';
+import { setupTest } from 'matterbridge/test-utils/vitest';
 import type { IClientOptions } from 'mqtt';
 
 import { IRobotMqtt } from '../src/iRobotMqtt.js';

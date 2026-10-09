@@ -6,7 +6,7 @@
 
 const NAME = 'IRobotCredentials';
 
-import { setupTest } from 'matterbridge/vitest-utils';
+import { setupTest } from 'matterbridge/test-utils/vitest';
 import type { MockedFunction } from 'vitest';
 
 import { IRobotCredentials, type IRobotCredentialsConfig, type IRobotEndpoints } from '../src/iRobotGetCredentials.js';

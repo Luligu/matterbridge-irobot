@@ -14,7 +14,7 @@ import { invokeSubscribeHandler, MatterbridgeEndpoint, type PlatformMatterbridge
 import { RoboticVacuumCleaner } from 'matterbridge/devices';
 import { LogLevel } from 'matterbridge/logger';
 import { PowerSource, RvcCleanMode, RvcOperationalState, RvcRunMode, ServiceArea } from 'matterbridge/matter/clusters';
-import { flushAsync, log, loggerDebugSpy, loggerErrorSpy, loggerInfoSpy, loggerNoticeSpy, loggerWarnSpy, setDebug, setupTest } from 'matterbridge/vitest-utils';
+import { flushAsync } from 'matterbridge/test-utils';
 import {
   addMatterbridge,
   createServerNode,
@@ -22,9 +22,17 @@ import {
   destroyTestEnvironment,
   flushServerNode,
   getMatterbridge,
+  log,
+  loggerDebugSpy,
+  loggerErrorSpy,
+  loggerInfoSpy,
+  loggerNoticeSpy,
+  loggerWarnSpy,
+  setDebug,
+  setupTest,
   startServerNode,
   stopServerNode,
-} from 'matterbridge/vitest-utils/matter';
+} from 'matterbridge/test-utils/vitest';
 
 import { IRobotDiscovery, type IRobotDiscoveryInfo } from '../src/iRobotDiscovery.js';
 import { IRobotCredentials } from '../src/iRobotGetCredentials.js';
