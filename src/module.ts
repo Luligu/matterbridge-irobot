@@ -244,7 +244,10 @@ export class Platform extends MatterbridgeDynamicPlatform {
         { label: 'Cleaning', mode: 2, modeTags: [{ value: RvcRunMode.ModeTag.Cleaning }] },
       ];
       const cleanMode = 1; // Vacuum
-      const cleanModes = [{ label: 'Vacuum', mode: 1, modeTags: [{ value: RvcCleanMode.ModeTag.Vacuum }] }];
+      const cleanModes = [
+        { label: 'Vacuum', mode: 1, modeTags: [{ value: RvcCleanMode.ModeTag.Vacuum }, { value: RvcCleanMode.ModeTag.Auto }] },
+        { label: 'Quick Vacuum', mode: 2, modeTags: [{ value: RvcCleanMode.ModeTag.Vacuum }, { value: RvcCleanMode.ModeTag.Quick }] },
+      ];
       const phase = 0; // Charge
       const phases = ['charge', 'run', 'stop', 'hmUsrDock'];
       const supportedAreas: ServiceArea.Area[] = [];
