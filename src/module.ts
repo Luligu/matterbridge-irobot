@@ -305,10 +305,10 @@ export class Platform extends MatterbridgeDynamicPlatform {
       // Map Matter's Robotic Vacuum commands to iRobot local MQTT commands.
       rvc.addCommandHandler('RvcRunMode.changeToMode', async ({ request }) => {
         const selectedMode = rvc.getAttribute(RvcRunMode, 'supportedModes')?.find((s) => s.mode === request.newMode);
-        if (selectedMode?.modeTags?.some((tag) => tag.value === RvcRunMode.ModeTag.Cleaning)) {
+        if (selectedMode?.modeTags?.some((tag) => tag.value === (RvcRunMode.ModeTag.Cleaning as number))) {
           rvc.log.notice(`Run Mode changed to ${selectedMode.label}: starting cleaning cycle`);
           await robotMqtt.clean();
-        } else if (selectedMode?.modeTags?.some((tag) => tag.value === RvcRunMode.ModeTag.Idle)) {
+        } else if (selectedMode?.modeTags?.some((tag) => tag.value === (RvcRunMode.ModeTag.Idle as number))) {
           rvc.log.notice(`Run Mode changed to ${selectedMode.label}: stopping cleaning cycle`);
           await robotMqtt.stop();
         }
