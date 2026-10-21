@@ -590,13 +590,11 @@ describe('TestPlatform', () => {
       ],
     };
 
-    platform = new Platform(matterbridge, log, testConfig);
+    // Office and Guest are registered together: bridge mode adds bridgedNode, so the two vacuums under the aggregator need no tagList
+    platform = new Platform(getMatterbridge('bridge'), log, testConfig);
     addMatterbridge(platform);
 
-    // Office and Guest are registered together: bridge mode adds bridgedNode, so the two vacuums under the aggregator need no tagList
-    Object.assign(matterbridge, { bridgeMode: 'bridge' });
     await platform.registerDevices(2468);
-    Object.assign(matterbridge, { bridgeMode: 'none' });
 
     expect(getRobotPublicInfoSpy).toHaveBeenNthCalledWith(1, '192.168.1.60', 2468);
     expect(getRobotPublicInfoSpy).toHaveBeenNthCalledWith(2, '192.168.1.61', 2468);
