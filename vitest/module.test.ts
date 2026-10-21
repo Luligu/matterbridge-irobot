@@ -67,7 +67,7 @@ describe('TestPlatform', () => {
 
   beforeAll(async () => {
     // Create Matterbridge environment
-    await createTestEnvironment('warn');
+    await createTestEnvironment();
     await createServerNode(MATTER_PORT);
     if (!CREATE_ONLY) await startServerNode();
     matterbridge = getMatterbridge();
@@ -244,6 +244,8 @@ describe('TestPlatform', () => {
     if (!platform) throw new Error('Platform instance is not defined');
     await platform.onShutdown('Test reason');
     expect(loggerInfoSpy).toHaveBeenCalledWith('onShutdown called with reason:', 'Test reason');
+    // Remove Test Device: the test Matterbridge has no bridge mode, so a second vacuum under the aggregator would need a tagList
+    await platform.unregisterAllDevices();
     platform = undefined;
   });
 
@@ -441,6 +443,7 @@ describe('TestPlatform', () => {
     expect(loggerDebugSpy).toHaveBeenCalledWith(expect.stringContaining('[mqtt] state/text:'));
 
     await platform.onShutdown('registerDevices success cleanup');
+    await platform.unregisterAllDevices();
 
     expect(disconnectSpy).toHaveBeenCalledWith(true);
     expect(loggerInfoSpy).toHaveBeenCalledWith('Disconnected MQTT client for device with IP 192.168.1.50');
@@ -549,6 +552,7 @@ describe('TestPlatform', () => {
     expect(loggerNoticeSpy).toHaveBeenCalledWith('Received selectAreas: [1, 7]');
 
     await platform.onShutdown('registerDevices no credentials cleanup');
+    await platform.unregisterAllDevices();
 
     expect(disconnectSpy).not.toHaveBeenCalled();
 
@@ -589,7 +593,10 @@ describe('TestPlatform', () => {
     platform = new Platform(matterbridge, log, testConfig);
     addMatterbridge(platform);
 
+    // Office and Guest are registered together: bridge mode adds bridgedNode, so the two vacuums under the aggregator need no tagList
+    Object.assign(matterbridge, { bridgeMode: 'bridge' });
     await platform.registerDevices(2468);
+    Object.assign(matterbridge, { bridgeMode: 'none' });
 
     expect(getRobotPublicInfoSpy).toHaveBeenNthCalledWith(1, '192.168.1.60', 2468);
     expect(getRobotPublicInfoSpy).toHaveBeenNthCalledWith(2, '192.168.1.61', 2468);
@@ -599,6 +606,7 @@ describe('TestPlatform', () => {
     expect(loggerWarnSpy).toHaveBeenCalledWith('Device "Guest" (192.168.1.61) has no local MQTT credentials (blid/password); commands will be read-only.');
 
     await platform.onShutdown('registerDevices failure cleanup');
+    await platform.unregisterAllDevices();
 
     expect(disconnectSpy).toHaveBeenCalledWith(true);
 
@@ -627,6 +635,7 @@ describe('TestPlatform', () => {
 
     await platform.registerDevices();
     await platform.onShutdown('disconnect failure cleanup');
+    await platform.unregisterAllDevices();
 
     expect(connectSpy).toHaveBeenCalledTimes(1);
     expect(disconnectSpy).toHaveBeenCalledWith(true);
