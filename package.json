@@ -72,6 +72,7 @@
     "git": true,
     "version": false,
     "publish": false,
+    "workflow": "dev",
     "frontend": true,
     "coverage": {
       "lines": 100,
