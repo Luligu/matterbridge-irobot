@@ -29,7 +29,7 @@ If you like this project and find it useful, please consider giving it a star on
 
 <a href="https://www.buymeacoffee.com/luligugithub"><img src="https://matterbridge.io/assets/bmc-button.svg" alt="Buy me a coffee" width="120"></a>
 
-## [0.3.1] - Dev branch
+## [0.4.0] - 2026-10-23
 
 ### Breaking changes
 
@@ -56,6 +56,7 @@ If you like this project and find it useful, please consider giving it a star on
 - [lint]: Update `.oxlintrc.json` and `.oxfmtrc.json` to v.1.2.0: align shared ignore patterns.
 - [vitest]: Replace `vite.config.ts` with `vitest.config.ts` v.2.0.9 and update test and coverage exclusions.
 - [scripts]: Update `scripts/clean.mjs` and `scripts/deep-clean.mjs` to v.2.0.0: log removed paths, add dry-run support and expose importable entry points.
+- [scripts]: Update `scripts/deep-clean.mjs` and `scripts/prepublish-clean.mjs` to v.2.1.0: also remove `tmp/` and `bun.lock`.
 - [scripts]: Update release, download, Git status, Git sync, prepublish, pruning, workflow cleanup and version helpers to v.2.0.0 with CLI previews and importable entry points.
 - [package]: Remove unsupported npm flags from `bun link` in `softReset:bun`.
 - [package]: Upgrade package.
@@ -68,6 +69,7 @@ If you like this project and find it useful, please consider giving it a star on
 - [package]: Bump `@vitest/coverage-v8` to v.5.0.5.
 - [package]: Bump `@types/node` to v.26.6.5.
 - [package]: Bump `typescript` to v.7.0.2.
+- [package]: Bump `mqtt` to v.5.16.1.
 
 <a href="https://www.buymeacoffee.com/luligugithub"><img src="https://matterbridge.io/assets/bmc-button.svg" alt="Buy me a coffee" width="80"></a>
 
