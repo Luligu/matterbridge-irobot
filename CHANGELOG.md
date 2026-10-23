@@ -31,6 +31,10 @@ If you like this project and find it useful, please consider giving it a star on
 
 ## [0.4.1] - Dev branch
 
+### Changed
+
+- [package]: Bump transitive `ip-address` to v.10.7.4 (mqtt → socks) to fix security advisories.
+
 <a href="https://www.buymeacoffee.com/luligugithub"><img src="https://matterbridge.io/assets/bmc-button.svg" alt="Buy me a coffee" width="80"></a>
 
 ## [0.4.0] - 2026-10-23
