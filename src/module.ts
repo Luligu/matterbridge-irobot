@@ -80,8 +80,8 @@ export class Platform extends MatterbridgeDynamicPlatform {
     super(matterbridge, log, config);
 
     // Verify that Matterbridge is the correct version
-    if (typeof this.verifyMatterbridgeVersion !== 'function' || !this.verifyMatterbridgeVersion('3.9.0')) {
-      throw new Error(`This plugin requires Matterbridge version >= "3.9.0". Please update Matterbridge to the latest version in the frontend.`);
+    if (typeof this.verifyMatterbridgeVersion !== 'function' || !this.verifyMatterbridgeVersion('3.11.0')) {
+      throw new Error(`This plugin requires Matterbridge version >= "3.11.0". Please update Matterbridge to the latest version in the frontend.`);
     }
 
     // Set default values for configuration properties for old setups that might not have these properties.
@@ -244,13 +244,17 @@ export class Platform extends MatterbridgeDynamicPlatform {
         { label: 'Cleaning', mode: 2, modeTags: [{ value: RvcRunMode.ModeTag.Cleaning }] },
       ];
       const cleanMode = 1; // Vacuum
-      const cleanModes = [{ label: 'Vacuum', mode: 1, modeTags: [{ value: RvcCleanMode.ModeTag.Vacuum }] }];
+      const cleanModes = [
+        { label: 'Vacuum', mode: 1, modeTags: [{ value: RvcCleanMode.ModeTag.Vacuum }, { value: RvcCleanMode.ModeTag.Auto }] },
+        { label: 'Quick Vacuum', mode: 2, modeTags: [{ value: RvcCleanMode.ModeTag.Vacuum }, { value: RvcCleanMode.ModeTag.Quick }] },
+      ];
       const phase = 0; // Charge
       const phases = ['charge', 'run', 'stop', 'hmUsrDock'];
       const supportedAreas: ServiceArea.Area[] = [];
       const selectedAreas: number[] = [];
       const currentArea: number | null = null;
       const supportedMaps: ServiceArea.Map[] = [];
+      // oxlint-disable-next-line typescript/no-deprecated
       const rvc = new RoboticVacuumCleaner(
         device.name,
         device.ip ?? device.name.toLocaleLowerCase().replaceAll(' ', '-') + '-unknown-ip',
@@ -304,10 +308,10 @@ export class Platform extends MatterbridgeDynamicPlatform {
       // Map Matter's Robotic Vacuum commands to iRobot local MQTT commands.
       rvc.addCommandHandler('RvcRunMode.changeToMode', async ({ request }) => {
         const selectedMode = rvc.getAttribute(RvcRunMode, 'supportedModes')?.find((s) => s.mode === request.newMode);
-        if (selectedMode?.modeTags?.some((tag) => tag.value === RvcRunMode.ModeTag.Cleaning)) {
+        if (selectedMode?.modeTags?.some((tag) => tag.value === (RvcRunMode.ModeTag.Cleaning as number))) {
           rvc.log.notice(`Run Mode changed to ${selectedMode.label}: starting cleaning cycle`);
           await robotMqtt.clean();
-        } else if (selectedMode?.modeTags?.some((tag) => tag.value === RvcRunMode.ModeTag.Idle)) {
+        } else if (selectedMode?.modeTags?.some((tag) => tag.value === (RvcRunMode.ModeTag.Idle as number))) {
           rvc.log.notice(`Run Mode changed to ${selectedMode.label}: stopping cleaning cycle`);
           await robotMqtt.stop();
         }

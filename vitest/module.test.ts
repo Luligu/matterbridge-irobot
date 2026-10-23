@@ -14,7 +14,7 @@ import { invokeSubscribeHandler, MatterbridgeEndpoint, type PlatformMatterbridge
 import { RoboticVacuumCleaner } from 'matterbridge/devices';
 import { LogLevel } from 'matterbridge/logger';
 import { PowerSource, RvcCleanMode, RvcOperationalState, RvcRunMode, ServiceArea } from 'matterbridge/matter/clusters';
-import { flushAsync, log, loggerDebugSpy, loggerErrorSpy, loggerInfoSpy, loggerNoticeSpy, loggerWarnSpy, setDebug, setupTest } from 'matterbridge/vitest-utils';
+import { flushAsync } from 'matterbridge/test-utils';
 import {
   addMatterbridge,
   createServerNode,
@@ -22,9 +22,17 @@ import {
   destroyTestEnvironment,
   flushServerNode,
   getMatterbridge,
+  log,
+  loggerDebugSpy,
+  loggerErrorSpy,
+  loggerInfoSpy,
+  loggerNoticeSpy,
+  loggerWarnSpy,
+  setDebug,
+  setupTest,
   startServerNode,
   stopServerNode,
-} from 'matterbridge/vitest-utils/matter';
+} from 'matterbridge/test-utils/vitest';
 
 import { IRobotDiscovery, type IRobotDiscoveryInfo } from '../src/iRobotDiscovery.js';
 import { IRobotCredentials } from '../src/iRobotGetCredentials.js';
@@ -99,7 +107,7 @@ describe('TestPlatform', () => {
 
   it('should throw error in load when version is not valid', () => {
     expect(() => new Platform({ ...matterbridge, matterbridgeVersion: '1.5.0' }, log, config)).toThrow(
-      'This plugin requires Matterbridge version >= "3.9.0". Please update Matterbridge to the latest version in the frontend.',
+      'This plugin requires Matterbridge version >= "3.11.0". Please update Matterbridge to the latest version in the frontend.',
     );
   });
 
@@ -236,6 +244,8 @@ describe('TestPlatform', () => {
     if (!platform) throw new Error('Platform instance is not defined');
     await platform.onShutdown('Test reason');
     expect(loggerInfoSpy).toHaveBeenCalledWith('onShutdown called with reason:', 'Test reason');
+    // Remove Test Device: the test Matterbridge has no bridge mode, so a second vacuum under the aggregator would need a tagList
+    await platform.unregisterAllDevices();
     platform = undefined;
   });
 
@@ -325,13 +335,11 @@ describe('TestPlatform', () => {
   });
 
   it('should register devices, connect configured MQTT, and wire handlers', async () => {
-    const getRobotPublicInfoSpy = vi.spyOn(IRobotDiscovery.prototype, 'getRobotPublicInfo').mockImplementation(
-      async (ip, timeout): Promise<IRobotDiscoveryInfo> => ({
-        ip,
-        hostname: `Roomba-${ip}`,
-        rinfo: { address: ip, family: 'IPv4', port: timeout ?? 5678, size: 0 },
-      }),
-    );
+    const getRobotPublicInfoSpy = vi.spyOn(IRobotDiscovery.prototype, 'getRobotPublicInfo').mockImplementation(async (ip, timeout): Promise<IRobotDiscoveryInfo> => ({
+      ip,
+      hostname: `Roomba-${ip}`,
+      rinfo: { address: ip, family: 'IPv4', port: timeout ?? 5678, size: 0 },
+    }));
     const mqttInstances: IRobotMqtt[] = [];
     const connectSpy = vi.spyOn(IRobotMqtt.prototype, 'connect').mockImplementation(async function (this: IRobotMqtt) {
       mqttInstances.push(this);
@@ -435,6 +443,7 @@ describe('TestPlatform', () => {
     expect(loggerDebugSpy).toHaveBeenCalledWith(expect.stringContaining('[mqtt] state/text:'));
 
     await platform.onShutdown('registerDevices success cleanup');
+    await platform.unregisterAllDevices();
 
     expect(disconnectSpy).toHaveBeenCalledWith(true);
     expect(loggerInfoSpy).toHaveBeenCalledWith('Disconnected MQTT client for device with IP 192.168.1.50');
@@ -454,13 +463,11 @@ describe('TestPlatform', () => {
   });
 
   it('should wire subscriptions and command handlers without connecting when credentials are missing', async () => {
-    const getRobotPublicInfoSpy = vi.spyOn(IRobotDiscovery.prototype, 'getRobotPublicInfo').mockImplementation(
-      async (ip, timeout): Promise<IRobotDiscoveryInfo> => ({
-        ip,
-        hostname: `Roomba-${ip}`,
-        rinfo: { address: ip, family: 'IPv4', port: timeout ?? 5678, size: 0 },
-      }),
-    );
+    const getRobotPublicInfoSpy = vi.spyOn(IRobotDiscovery.prototype, 'getRobotPublicInfo').mockImplementation(async (ip, timeout): Promise<IRobotDiscoveryInfo> => ({
+      ip,
+      hostname: `Roomba-${ip}`,
+      rinfo: { address: ip, family: 'IPv4', port: timeout ?? 5678, size: 0 },
+    }));
     const connectSpy = vi.spyOn(IRobotMqtt.prototype, 'connect').mockResolvedValue();
     const disconnectSpy = vi.spyOn(IRobotMqtt.prototype, 'disconnect').mockResolvedValue();
     const cleanSpy = vi.spyOn(IRobotMqtt.prototype, 'clean').mockResolvedValue();
@@ -545,6 +552,7 @@ describe('TestPlatform', () => {
     expect(loggerNoticeSpy).toHaveBeenCalledWith('Received selectAreas: [1, 7]');
 
     await platform.onShutdown('registerDevices no credentials cleanup');
+    await platform.unregisterAllDevices();
 
     expect(disconnectSpy).not.toHaveBeenCalled();
 
@@ -582,7 +590,8 @@ describe('TestPlatform', () => {
       ],
     };
 
-    platform = new Platform(matterbridge, log, testConfig);
+    // Office and Guest are registered together: bridge mode adds bridgedNode, so the two vacuums under the aggregator need no tagList
+    platform = new Platform(getMatterbridge('bridge'), log, testConfig);
     addMatterbridge(platform);
 
     await platform.registerDevices(2468);
@@ -595,6 +604,7 @@ describe('TestPlatform', () => {
     expect(loggerWarnSpy).toHaveBeenCalledWith('Device "Guest" (192.168.1.61) has no local MQTT credentials (blid/password); commands will be read-only.');
 
     await platform.onShutdown('registerDevices failure cleanup');
+    await platform.unregisterAllDevices();
 
     expect(disconnectSpy).toHaveBeenCalledWith(true);
 
@@ -605,13 +615,11 @@ describe('TestPlatform', () => {
   });
 
   it('should log a debug message when MQTT disconnect fails during shutdown', async () => {
-    const getRobotPublicInfoSpy = vi.spyOn(IRobotDiscovery.prototype, 'getRobotPublicInfo').mockImplementation(
-      async (ip): Promise<IRobotDiscoveryInfo> => ({
-        ip,
-        hostname: `Roomba-${ip}`,
-        rinfo: { address: ip, family: 'IPv4', port: 5678, size: 0 },
-      }),
-    );
+    const getRobotPublicInfoSpy = vi.spyOn(IRobotDiscovery.prototype, 'getRobotPublicInfo').mockImplementation(async (ip): Promise<IRobotDiscoveryInfo> => ({
+      ip,
+      hostname: `Roomba-${ip}`,
+      rinfo: { address: ip, family: 'IPv4', port: 5678, size: 0 },
+    }));
     const connectSpy = vi.spyOn(IRobotMqtt.prototype, 'connect').mockResolvedValue();
     const disconnectSpy = vi.spyOn(IRobotMqtt.prototype, 'disconnect').mockRejectedValue(new Error('disconnect failed'));
 
@@ -625,6 +633,7 @@ describe('TestPlatform', () => {
 
     await platform.registerDevices();
     await platform.onShutdown('disconnect failure cleanup');
+    await platform.unregisterAllDevices();
 
     expect(connectSpy).toHaveBeenCalledTimes(1);
     expect(disconnectSpy).toHaveBeenCalledWith(true);

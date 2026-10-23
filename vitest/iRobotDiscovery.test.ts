@@ -10,7 +10,7 @@ import type { RemoteInfo } from 'node:dgram';
 import dgram from 'node:dgram';
 import { EventEmitter } from 'node:events';
 
-import { setupTest } from 'matterbridge/vitest-utils';
+import { setupTest } from 'matterbridge/test-utils/vitest';
 
 import { IRobotDiscovery } from '../src/iRobotDiscovery.js';
 
