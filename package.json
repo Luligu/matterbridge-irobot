@@ -68,11 +68,9 @@
     "node": true,
     "plugin": true,
     "vitest": true,
-    "native": true,
-    "git": true,
+    "git": false,
     "version": false,
     "publish": false,
-    "frontend": true,
     "coverage": {
       "lines": 100,
       "functions": 100
